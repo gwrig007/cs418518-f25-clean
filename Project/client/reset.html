@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reset Password | Course Advising Portal</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Reset Password</h1>
+    <p>Enter your new password below to reset your account.</p>
+
+    <form id="resetForm">
+      <input 
+        type="password" 
+        id="newPassword" 
+        name="newPassword" 
+        placeholder="New password" 
+        required 
+      />
+      <input 
+        type="password" 
+        id="confirmPassword" 
+        name="confirmPassword" 
+        placeholder="Confirm new password" 
+        required 
+      />
+      <button type="submit">Reset Password</button>
+      <a href="signin.html" class="link">Back to Sign In</a>
+    </form>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const form = document.getElementById("resetForm");
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const newPassword = document.getElementById("newPassword").value.trim();
+        const confirmPassword = document.getElementById("confirmPassword").value.trim();
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get("token"); // token from email link
+
+        if (newPassword !== confirmPassword) {
+          alert("Passwords do not match!");
+          return;
+        }
+
+        try {
+          const res = await fetch("http://localhost:8080/user/reset-password", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token, newPassword }),
+          });
+
+          const data = await res.json();
+          alert(data.message);
+
+          if (res.ok) {
+            window.location.href = "signin.html";
+          }
+        } catch (err) {
+          console.error("Error resetting password:", err);
+          alert("Error resetting password. Please try again.");
+        }
+      });
+    });
+  </script>
+</body>
+</html>

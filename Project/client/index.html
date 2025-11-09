@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welcome | Course Advising Portal</title>
+  <link rel="stylesheet" href="style.css" />
+
+  <style>
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: linear-gradient(135deg, #6fb1fc, #4364f7, #002ef7);
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: white;
+    }
+
+    .container {
+      text-align: center;
+      background: rgba(255, 255, 255, 0.15);
+      padding: 50px 40px;
+      border-radius: 16px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+      animation: fadeIn 0.6s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    h1 {
+      font-size: 28px;
+      margin-bottom: 10px;
+      color: #fff;
+    }
+
+    p {
+      color: #e0e0e0;
+      margin-bottom: 30px;
+    }
+
+    button {
+      background-color: #007bff;
+      border: none;
+      border-radius: 8px;
+      color: white;
+      padding: 12px 25px;
+      font-size: 16px;
+      cursor: pointer;
+      margin: 10px;
+      transition: all 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+      transform: scale(1.05);
+    }
+
+    .link {
+      display: block;
+      margin-top: 20px;
+      color: #ffeb3b;
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    .link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Welcome to Course Advising Portal</h1>
+    <p>Manage your course selections and academic progress easily.</p>
+
+    <button id="signinBtn">Sign In</button>
+    <button id="signupBtn">Sign Up</button>
+
+    <a href="#" id="forgotLink" class="link">Forgot your password?</a>
+  </div>
+
+  <script>
+    document.getElementById("signinBtn").addEventListener("click", () => {
+      window.location.href = "signin.html";
+    });
+
+    document.getElementById("signupBtn").addEventListener("click", () => {
+      window.location.href = "signup.html";
+    });
+
+    document.getElementById("forgotLink").addEventListener("click", () => {
+      window.location.href = "forgot.html";
+    });
+  </script>
+</body>
+</html>

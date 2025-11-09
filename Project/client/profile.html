@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your Profile | ODU Course Advising Portal</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <div class="navbar">
+      <h1>ODU Course Advising Portal</h1>
+      <nav>
+        <a href="home.html">Home</a>
+        <a href="profile.html" class="active">Profile</a>
+        <a href="#" id="logoutBtn">Logout</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <h2>Your Profile</h2>
+
+    <form id="profileForm" class="profile-form">
+      <label>First Name</label>
+      <input type="text" id="firstName" name="firstName" placeholder="First Name" required />
+
+      <label>Last Name</label>
+      <input type="text" id="lastName" name="lastName" placeholder="Last Name" required />
+
+      <label>Email (cannot change)</label>
+      <input type="email" id="email" name="email" readonly />
+
+      <label>Password</label>
+      <input type="password" id="password" name="password" placeholder="Password" required />
+
+      <button type="submit">Save Changes</button>
+      <a href="home.html" class="link">Back to Home</a>
+    </form>
+  </main>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      const form = document.getElementById("profileForm");
+
+      // 🟢 Try both keys for email
+      const email = localStorage.getItem("userEmail") || localStorage.getItem("email");
+
+      if (!email) {
+        alert("No user found. Please sign in again.");
+        window.location.href = "signin.html";
+        return;
+      }
+
+      // 🟦 Load current profile
+      try {
+        const res = await fetch(`http://localhost:8080/user/profile?email=${email}`);
+        const data = await res.json();
+
+        if (res.ok) {
+          document.getElementById("firstName").value = data.firstName || data.u_first_name || "";
+          document.getElementById("lastName").value = data.lastName || data.u_last_name || "";
+          document.getElementById("email").value = data.email || email;
+          document.getElementById("password").value = data.password || "";
+        } else {
+          alert("Failed to load profile.");
+        }
+      } catch (err) {
+        console.error("Error fetching profile:", err);
+      }
+
+      // 🟩 Update profile
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const updatedProfile = {
+          email: document.getElementById("email").value.trim(),
+          firstName: document.getElementById("firstName").value.trim(),
+          lastName: document.getElementById("lastName").value.trim(),
+          password: document.getElementById("password").value.trim(),
+        };
+
+        try {
+          const res = await fetch("http://localhost:8080/user/update-profile", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(updatedProfile),
+          });
+
+          const data = await res.json();
+          alert(data.message);
+        } catch (err) {
+          console.error("Error updating profile:", err);
+          alert("Error updating profile. Please try again.");
+        }
+      });
+
+      // 🟥 Logout button
+      document.getElementById("logoutBtn").addEventListener("click", () => {
+        localStorage.clear();
+        alert("You have been logged out.");
+        window.location.href = "signin.html";
+      });
+    });
+  </script>
+</body>
+</html>

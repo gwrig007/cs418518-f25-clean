@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Course Advising Portal - Sign Up</title>
+<link rel="stylesheet" href="style.css" />
+
+<style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #4b6cb7, #182848);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .container {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+      width: 350px;
+      padding: 30px;
+      text-align: center;
+    }
+
+    h2 {
+      margin-bottom: 20px;
+      color: #182848;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    button {
+      width: 100%;
+      background: #4b6cb7;
+      color: white;
+      border: none;
+      padding: 10px;
+      font-size: 15px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background: #355a9b;
+    }
+
+    .links {
+      margin-top: 15px;
+      display: flex;
+      justify-content: center;
+      font-size: 13px;
+    }
+
+    .links a {
+      color: #4b6cb7;
+      text-decoration: none;
+    }
+
+    .links a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Create an Account</h2>
+    <form id="signupForm">
+      <input type="text" id="firstName" placeholder="First Name" required />
+      <input type="text" id="lastName" placeholder="Last Name" required />
+      <input type="email" id="email" placeholder="Email Address" required />
+      <input type="password" id="password" placeholder="Create Password" required />
+      <button type="submit">Register</button>
+
+      <div class="links">
+        <a href="signin.html">Already have an account? Sign In</a>
+      </div>
+    </form>
+  </div>
+
+  <!-- ✅ Script placed after DOM -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const signupForm = document.getElementById("signupForm");
+
+      signupForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const firstName = document.getElementById("firstName").value.trim();
+        const lastName = document.getElementById("lastName").value.trim();
+        const email = document.getElementById("email").value.trim();
+        const password = document.getElementById("password").value.trim();
+
+        if (!firstName || !lastName || !email || !password) {
+          alert("⚠️ Please fill in all fields.");
+          return;
+        }
+
+        try {
+          const res = await fetch("http://localhost:8080/user/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ firstName, lastName, email, password }),
+          });
+
+          const data = await res.json();
+
+          if (res.ok) {
+            alert("✅ Account created successfully! Please check your email for verification.");
+            window.location.href = "signin.html";
+          } else {
+            alert(`❌ Error: ${data.message || "Unable to register."}`);
+          }
+        } catch (err) {
+          console.error("Error:", err);
+          alert("⚠️ Unable to connect to the server. Please try again later.");
+        }
+      });
+    });
+  </script>
+</body>
+</html>
