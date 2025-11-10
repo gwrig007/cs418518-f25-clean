@@ -1,6 +1,7 @@
 // database/connection.js
 import mysql from "mysql2/promise";
 
+// create the pool
 export const pool = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
@@ -11,15 +12,17 @@ export const pool = mysql.createPool({
   connectionLimit: 10,
   queueLimit: 0,
   ssl: {
-    rejectUnauthorized: true, // required by Clever Cloud
+    rejectUnauthorized: true, // ✅ required for Clever Cloud’s SSL
   },
 });
 
-// quick connection test when the server starts
-try {
-  const conn = await pool.getConnection();
-  console.log("✅ Connected to Clever Cloud MySQL!");
-  conn.release();
-} catch (err) {
-  console.error("❌ MySQL connection failed:", err);
-}
+// ✅ run connection test safely
+(async () => {
+  try {
+    const conn = await pool.getConnection();
+    console.log("✅ Connected to Clever Cloud MySQL!");
+    conn.release();
+  } catch (err) {
+    console.error("❌ MySQL connection failed:", err.message);
+  }
+})();
