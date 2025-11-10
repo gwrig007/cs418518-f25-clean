@@ -26,33 +26,9 @@ advising.get("/history", async (req, res) => {
 });
 
 /* ===========================
-   GET /advising/:id
-   Fetch a single advising record + its courses
-=========================== */
-advising.get("/:id", async (req, res) => {
-  try {
-    const [records] = await pool.execute(
-      "SELECT * FROM advising_records WHERE id = ?",
-      [req.params.id]
-    );
-    if (records.length === 0)
-      return res.status(404).json({ message: "Record not found" });
-
-    const [courses] = await pool.execute(
-      "SELECT * FROM advising_courses WHERE record_id = ?",
-      [req.params.id]
-    );
-
-    res.json({ record: records[0], courses });
-  } catch (err) {
-    console.error("Get record error:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
-
-/* ===========================
-   GET /advising/last-courses?email=&term=
+   ✅ GET /advising/last-courses?email=&term=
    Fetch courses student took in previous or current term
+   ⚠️ Moved ABOVE /:id so Express doesn’t treat it as an ID.
 =========================== */
 advising.get("/last-courses", async (req, res) => {
   try {
@@ -81,6 +57,31 @@ advising.get("/last-courses", async (req, res) => {
   } catch (err) {
     console.error("Last courses error:", err);
     res.status(500).json({ message: "Error loading last courses" });
+  }
+});
+
+/* ===========================
+   GET /advising/:id
+   Fetch a single advising record + its courses
+=========================== */
+advising.get("/:id", async (req, res) => {
+  try {
+    const [records] = await pool.execute(
+      "SELECT * FROM advising_records WHERE id = ?",
+      [req.params.id]
+    );
+    if (records.length === 0)
+      return res.status(404).json({ message: "Record not found" });
+
+    const [courses] = await pool.execute(
+      "SELECT * FROM advising_courses WHERE record_id = ?",
+      [req.params.id]
+    );
+
+    res.json({ record: records[0], courses });
+  } catch (err) {
+    console.error("Get record error:", err);
+    res.status(500).json({ message: "Server error" });
   }
 });
 
