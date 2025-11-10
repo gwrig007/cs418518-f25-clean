@@ -3,6 +3,11 @@ import { pool } from "../database/connection.js";
 import bcrypt from "bcrypt";
 import { sendEmail } from "../utils/sendmail.js"; // ✅ Replaces nodemailer
 
+import advising from ".route/advising.js";
+application.use ("/advising", advising);
+
+
+
 const user = Router();
 
 // 🟩 REGISTER (Sign-Up)
