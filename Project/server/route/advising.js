@@ -28,25 +28,31 @@ advising.get("/history", async (req, res) => {
 });
 
 /* ===========================
-   GET /advising/last-courses?email=&term=
-   Fetch courses student took in previous term
+   GET /advising/current?email=
+   Returns courses the student is currently registered for
 =========================== */
-advising.get("/last-courses", async (req, res) => {
+advising.get("/current", async (req, res) => {
   try {
-    const { email, term } = req.query;
-    if (!email || !term) return res.json([]);
+    const { email } = req.query;
+    if (!email) return res.status(400).json({ message: "Email is required" });
 
     const [rows] = await pool.execute(
-      "SELECT course_name FROM taken_courses WHERE u_email = ? AND term = ?",
-      [email, term]
+      `SELECT course_name AS course, term, grade
+       FROM taken_courses
+       WHERE u_email = ? AND term = (
+         SELECT MAX(term) FROM taken_courses WHERE u_email = ?
+       )
+       ORDER BY course_name`,
+      [email, email]
     );
 
-    res.json(rows.map(r => r.course_name));
+    res.json(rows);
   } catch (err) {
-    console.error("Last courses error:", err);
-    res.json([]);
+    console.error("Current courses error:", err);
+    res.status(500).json({ message: "Server error fetching current courses" });
   }
 });
+
 
 /* ===========================
    GET /advising/:id
