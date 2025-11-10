@@ -1,18 +1,9 @@
 import { Router } from "express";
 import { pool } from "../database/connection.js";
 import bcrypt from "bcrypt";
-import nodemailer from "nodemailer";
+import { sendEmail } from "../utils/sendmail.js"; // ✅ Replaces nodemailer
 
 const user = Router();
-
-// ✉️ Email Transporter (Gmail)
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.SMTP_EMAIL,
-    pass: process.env.SMTP_PASSWORD,
-  },
-});
 
 // 🟩 REGISTER (Sign-Up)
 user.post("/register", async (req, res) => {
@@ -38,18 +29,17 @@ user.post("/register", async (req, res) => {
       [firstName, lastName, email, hashedPassword, 1, 0]
     );
 
-    // Send welcome email
-    await transporter.sendMail({
-      from: process.env.SMTP_EMAIL,
-      to: email,
-      subject: "Welcome to the ODU Course Advising Portal 🎉",
-      html: `
+    // ✅ Send welcome email via SendGrid
+    await sendEmail(
+      email,
+      "Welcome to the ODU Course Advising Portal 🎉",
+      `
         <p>Hi ${firstName},</p>
         <p>Your account has been successfully created and verified.</p>
         <p>You can now log in using your credentials and OTP verification.</p>
         <a href="https://oduadvisingportal.netlify.app/signin.html">Go to Sign In</a>
-      `,
-    });
+      `
+    );
 
     res.status(201).json({
       status: 201,
@@ -84,17 +74,16 @@ user.post("/login", async (req, res) => {
       email,
     ]);
 
-    // Send OTP email
-    await transporter.sendMail({
-      from: process.env.SMTP_EMAIL,
-      to: email,
-      subject: "Your OTP Code - Course Advising Portal",
-      html: `
+    // ✅ Send OTP email via SendGrid
+    await sendEmail(
+      email,
+      "Your OTP Code - Course Advising Portal",
+      `
         <p>Hello ${userInfo.u_first_name},</p>
         <p>Your OTP code is: <strong>${otp}</strong></p>
         <p>This code expires in 10 minutes.</p>
-      `,
-    });
+      `
+    );
 
     res.json({
       status: 200,
@@ -149,15 +138,15 @@ user.post("/forgot-password", async (req, res) => {
       email
     )}`;
 
-    await transporter.sendMail({
-      from: process.env.SMTP_EMAIL,
-      to: email,
-      subject: "Password Reset - Course Advising Portal",
-      html: `
+    // ✅ Send password reset email via SendGrid
+    await sendEmail(
+      email,
+      "Password Reset - Course Advising Portal",
+      `
         <p>Click below to reset your password:</p>
         <a href="${resetLink}">${resetLink}</a>
-      `,
-    });
+      `
+    );
 
     res.json({ message: "Password reset email sent!" });
   } catch (err) {
@@ -232,4 +221,3 @@ user.put("/update-profile", async (req, res) => {
 });
 
 export default user;
-
