@@ -14,39 +14,16 @@ advising.get("/history", async (req, res) => {
 
     const [rows] = await pool.execute(
       `SELECT id, DATE_FORMAT(created_at, '%m/%d/%Y') AS date, current_term AS term, status
-       FROM advising_records WHERE u_email = ? ORDER BY created_at DESC`,
+       FROM advising_records 
+       WHERE u_email = ? 
+       ORDER BY created_at DESC`,
       [email]
     );
 
     res.json(rows);
   } catch (err) {
     console.error("History error:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
-
-/* ===========================
-   GET /advising/:id
-   Fetch a single advising record + its courses
-=========================== */
-advising.get("/:id", async (req, res) => {
-  try {
-    const [records] = await pool.execute(
-      "SELECT * FROM advising_records WHERE id = ?",
-      [req.params.id]
-    );
-    if (records.length === 0)
-      return res.status(404).json({ message: "Record not found" });
-
-    const [courses] = await pool.execute(
-      "SELECT * FROM advising_courses WHERE record_id = ?",
-      [req.params.id]
-    );
-
-    res.json({ record: records[0], courses });
-  } catch (err) {
-    console.error("Get record error:", err);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error fetching advising history" });
   }
 });
 
@@ -58,10 +35,12 @@ advising.get("/last-courses", async (req, res) => {
   try {
     const { email, term } = req.query;
     if (!email || !term) return res.json([]);
+
     const [rows] = await pool.execute(
       "SELECT course_name FROM taken_courses WHERE u_email = ? AND term = ?",
       [email, term]
     );
+
     res.json(rows.map(r => r.course_name));
   } catch (err) {
     console.error("Last courses error:", err);
@@ -70,7 +49,35 @@ advising.get("/last-courses", async (req, res) => {
 });
 
 /* ===========================
+   GET /advising/:id
+   Fetch a single advising record + its courses
+=========================== */
+advising.get("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const [records] = await pool.execute(
+      "SELECT * FROM advising_records WHERE id = ?",
+      [id]
+    );
+    if (records.length === 0)
+      return res.status(404).json({ message: "Record not found" });
+
+    const [courses] = await pool.execute(
+      "SELECT * FROM advising_courses WHERE record_id = ?",
+      [id]
+    );
+
+    res.json({ record: records[0], courses });
+  } catch (err) {
+    console.error("Get record error:", err);
+    res.status(500).json({ message: "Server error fetching record" });
+  }
+});
+
+/* ===========================
    POST /advising/create
+   Create new advising record
 =========================== */
 advising.post("/create", async (req, res) => {
   const { email, last_term, last_gpa, current_term, courses } = req.body;
@@ -80,25 +87,21 @@ advising.post("/create", async (req, res) => {
   try {
     await conn.beginTransaction();
 
-    // 1️⃣ insert advising record
     const [result] = await conn.execute(
-      `INSERT INTO advising_records (u_email, last_term, last_gpa, current_term, status)
-       VALUES (?, ?, ?, ?, 'Pending')`,
+      `INSERT INTO advising_records (u_email, last_term, last_gpa, current_term, status, created_at)
+       VALUES (?, ?, ?, ?, 'Pending', NOW())`,
       [email, last_term, last_gpa, current_term]
     );
     const recordId = result.insertId;
 
-    // 2️⃣ insert course plan
     for (const c of courses || []) {
-      // rule: skip courses already taken last term
       const [taken] = await conn.execute(
         "SELECT id FROM taken_courses WHERE u_email = ? AND term = ? AND course_name = ?",
         [email, last_term, c.name]
       );
       if (taken.length === 0) {
         await conn.execute(
-          `INSERT INTO advising_courses (record_id, course_level, course_name)
-           VALUES (?, ?, ?)`,
+          "INSERT INTO advising_courses (record_id, course_level, course_name) VALUES (?, ?, ?)",
           [recordId, c.level, c.name]
         );
       }
@@ -117,15 +120,25 @@ advising.post("/create", async (req, res) => {
 
 /* ===========================
    PUT /advising/update/:id
+   Update existing advising record
 =========================== */
 advising.put("/update/:id", async (req, res) => {
   const { email, last_term, last_gpa, current_term, courses } = req.body;
   const { id } = req.params;
+
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
 
-    // update record
+    const [check] = await conn.execute(
+      "SELECT status FROM advising_records WHERE id = ? AND u_email = ?",
+      [id, email]
+    );
+    if (check.length === 0)
+      return res.status(404).json({ message: "Record not found" });
+    if (check[0].status !== "Pending")
+      return res.status(403).json({ message: "Cannot modify approved/rejected record" });
+
     await conn.execute(
       `UPDATE advising_records 
        SET last_term=?, last_gpa=?, current_term=?, status='Pending'
@@ -133,8 +146,8 @@ advising.put("/update/:id", async (req, res) => {
       [last_term, last_gpa, current_term, id, email]
     );
 
-    // delete existing courses and reinsert
     await conn.execute("DELETE FROM advising_courses WHERE record_id=?", [id]);
+
     for (const c of courses || []) {
       const [taken] = await conn.execute(
         "SELECT id FROM taken_courses WHERE u_email = ? AND term = ? AND course_name = ?",

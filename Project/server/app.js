@@ -1,13 +1,14 @@
-import 'dotenv/config';
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
 import user from "./route/user.js";
+import advising from "./route/advising.js";
 
-const app = express();
+const app = express(); // ✅ define app first
 const PORT = process.env.PORT || 8080;
 
-// ✅ CORS FIRST
+// ✅ Enable CORS first
 app.use(
   cors({
     origin: [
@@ -20,10 +21,10 @@ app.use(
   })
 );
 
-// ✅ Then body parser
+// ✅ Body parser
 app.use(bodyParser.json());
 
-// ✅ Logger (optional)
+// ✅ Optional logger
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.url}`);
   next();
@@ -31,15 +32,19 @@ app.use((req, res, next) => {
 
 // ✅ Routes
 app.use("/user", user);
+app.use("/advising", advising); // ✅ move here after app is defined
 
+// ✅ Root route
 app.get("/", (req, res) => {
   res.json({ status: 200, message: "✅ Server is running successfully 🚀" });
 });
 
+// ✅ 404 handler
 app.use((req, res) => {
   res.status(404).json({ status: 404, message: "Route not found 😢" });
 });
 
+// ✅ Start server
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`✅ Server running on port ${PORT}`);
 });

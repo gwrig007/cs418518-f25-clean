@@ -1,12 +1,7 @@
 import { Router } from "express";
 import { pool } from "../database/connection.js";
 import bcrypt from "bcrypt";
-import { sendEmail } from "../utils/sendmail.js"; // ✅ Replaces nodemailer
-
-import advising from ".route/advising.js";
-application.use ("/advising", advising);
-
-
+import { sendEmail } from "../utils/sendmail.js"; // ✅ uses SendGrid
 
 const user = Router();
 

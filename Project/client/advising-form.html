@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Advising Form | ODU Portal</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body{font-family:"Segoe UI",Arial,sans-serif;background:#f4f6fa;margin:0;padding:20px}
+    .wrap{max-width:980px;margin:28px auto;background:#fff;padding:20px;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.06)}
+    h1{color:#003366;margin:0 0 12px 0;font-size:1.15rem}
+    .grid{display:flex;gap:12px;align-items:flex-end}
+    .col{flex:1}
+    label{display:block;margin-bottom:6px;color:#333;font-size:0.9rem}
+    input, select{width:100%;padding:8px;border-radius:6px;border:1px solid #ddd}
+    .courses{margin-top:16px}
+    .course-row{display:flex;gap:8px;margin-bottom:8px}
+    .course-row select{flex:1}
+    .btn{background:#007bff;color:#fff;padding:8px 12px;border-radius:8px;border:none;cursor:pointer}
+    .btn.secondary{background:#6c757d}
+    .small{width:120px}
+    .msg{margin-top:12px;color:#b11f24;font-weight:500}
+    .disabled{opacity:.6}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1 id="title">Course Advising Form</h1>
+
+    <section id="headerSection">
+      <div class="grid">
+        <div class="col">
+          <label for="lastTerm">Last Term</label>
+          <input id="lastTerm" placeholder="e.g. Fall 2024" />
+        </div>
+        <div style="width:140px">
+          <label for="lastGpa">Last GPA</label>
+          <input id="lastGpa" type="number" step="0.01" min="0" max="4.0" />
+        </div>
+        <div class="col">
+          <label for="currentTerm">Current Term</label>
+          <input id="currentTerm" placeholder="e.g. Spring 2025" />
+        </div>
+      </div>
+    </section>
+
+    <section class="courses">
+      <h3>Course Plan</h3>
+      <div id="courseRows"></div>
+      <div style="margin-top:10px">
+        <button id="addBtn" class="btn">+ Add Course</button>
+      </div>
+    </section>
+
+    <div style="margin-top:16px">
+      <button id="saveBtn" class="btn">Save</button>
+      <button id="cancelBtn" class="btn secondary">Cancel</button>
+    </div>
+
+    <div id="message" class="msg"></div>
+  </div>
+
+<script>
+  const API_BASE =
+    window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
+      ? "http://127.0.0.1:8080"
+      : "https://cs418518-f25-clean.onrender.com";
+
+  const email = localStorage.getItem("userEmail");
+  if (!email) { alert("Please sign in."); window.location.href = "signin.html"; }
+
+  const params = new URLSearchParams(window.location.search);
+  const recordId = params.get("id");
+
+  // Example dropdown options — replace with dynamic API if desired
+  const LEVELS = ["Undergraduate", "Graduate"];
+  const COURSES = ["MATH 101","CS 201","CS 301","ENG 210","HIST 101","BIO 110"];
+
+  const courseRowsEl = document.getElementById("courseRows");
+  const messageEl = document.getElementById("message");
+  const addBtn = document.getElementById("addBtn");
+  const saveBtn = document.getElementById("saveBtn");
+  const cancelBtn = document.getElementById("cancelBtn");
+  const lastTermInput = document.getElementById("lastTerm");
+
+  let lastTermCourses = [];
+  let isReadOnly = false;
+
+  addBtn.addEventListener("click", (e)=> { e.preventDefault(); addCourseRow(); });
+  cancelBtn.addEventListener("click", ()=> history.back());
+
+  function createSelect(options, selected="") {
+    const s = document.createElement("select");
+    options.forEach(opt => {
+      const o = document.createElement("option");
+      o.value = opt;
+      o.textContent = opt;
+      if (opt === selected) o.selected = true;
+      s.appendChild(o);
+    });
+    return s;
+  }
+
+  function addCourseRow(data = { level: LEVELS[0], name: "" }) {
+    const row = document.createElement("div");
+    row.className = "course-row";
+
+    const levelSel = createSelect(LEVELS, data.level);
+    const courseSel = createSelect(["", ...COURSES], data.name || "");
+    courseSel.style.flex = "1";
+
+    // Validation for duplicates and last term
+    courseSel.addEventListener("change", ()=> {
+      const val = courseSel.value;
+      const selectedCourses = gatherCourses().map(c => c.name);
+
+      if (val && lastTermCourses.includes(val)) {
+        messageEl.textContent = `You already took ${val} in ${lastTermInput.value}. Remove it from your plan.`;
+        courseSel.value = "";
+      } else if (selectedCourses.filter(n => n === val).length > 1) {
+        messageEl.textContent = `${val} is already in your plan.`;
+        courseSel.value = "";
+      } else {
+        messageEl.textContent = "";
+      }
+    });
+
+    const removeBtn = document.createElement("button");
+    removeBtn.className = "btn secondary";
+    removeBtn.textContent = "Remove";
+    removeBtn.style.width = "100px";
+    removeBtn.addEventListener("click", (ev)=> { ev.preventDefault(); courseRowsEl.removeChild(row); });
+
+    row.appendChild(levelSel);
+    row.appendChild(courseSel);
+    row.appendChild(removeBtn);
+    courseRowsEl.appendChild(row);
+
+    if (isReadOnly) {
+      levelSel.disabled = true; courseSel.disabled = true; removeBtn.disabled = true;
+      removeBtn.classList.add("disabled");
+    }
+  }
+
+  function gatherCourses() {
+    return Array.from(courseRowsEl.querySelectorAll(".course-row")).map(r => {
+      const sel = r.querySelectorAll("select");
+      return { level: sel[0].value, name: sel[1].value };
+    }).filter(c => c.name);
+  }
+
+  async function fetchLastTermCourses(term) {
+    if (!term) { lastTermCourses = []; return; }
+    try {
+      const res = await fetch(`${API_BASE}/advising/last-courses?email=${encodeURIComponent(email)}&term=${encodeURIComponent(term)}`);
+      if (!res.ok) { lastTermCourses = []; return; }
+      lastTermCourses = await res.json();
+    } catch (err) {
+      console.error("last-courses error", err);
+      lastTermCourses = [];
+    }
+  }
+
+  async function loadRecord(id) {
+    try {
+      const res = await fetch(`${API_BASE}/advising/${id}`);
+      if (!res.ok) throw new Error("Record not found");
+      const { record, courses } = await res.json();
+
+      document.getElementById("title").textContent = `Course Advising Form — ${record.status}`;
+      document.getElementById("lastTerm").value = record.last_term || "";
+      document.getElementById("lastGpa").value = record.last_gpa || "";
+      document.getElementById("currentTerm").value = record.current_term || "";
+
+      await fetchLastTermCourses(record.last_term);
+
+      courseRowsEl.innerHTML = "";
+      (courses || []).forEach(c => addCourseRow({ level: c.course_level || LEVELS[0], name: c.course_name }));
+
+      if (record.status && record.status !== "Pending") {
+        isReadOnly = true;
+        document.querySelectorAll("input, select, button").forEach(el => {
+          if (el.id !== "cancelBtn") el.disabled = true;
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      messageEl.textContent = "Unable to load record.";
+    }
+  }
+
+  lastTermInput.addEventListener("change", async (e) => {
+    await fetchLastTermCourses(e.target.value);
+  });
+
+  (async function init(){
+    if (recordId) {
+      await loadRecord(recordId);
+    } else {
+      await fetchLastTermCourses(document.getElementById("lastTerm").value);
+      addCourseRow();
+    }
+  })();
+
+  saveBtn.addEventListener("click", async () => {
+    if (isReadOnly) return;
+    messageEl.textContent = "";
+
+    const payload = {
+      email,
+      last_term: document.getElementById("lastTerm").value || null,
+      last_gpa: document.getElementById("lastGpa").value || null,
+      current_term: document.getElementById("currentTerm").value || null,
+      courses: gatherCourses()
+    };
+
+    for (const c of payload.courses) {
+      if (lastTermCourses.includes(c.name)) {
+        messageEl.textContent = `Cannot add ${c.name} — already taken in last term.`;
+        return;
+      }
+    }
+
+    try {
+      saveBtn.disabled = true;
+      saveBtn.textContent = "Saving...";
+
+      let res;
+      if (recordId) {
+        res = await fetch(`${API_BASE}/advising/update/${recordId}`, {
+          method: "PUT",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify(payload)
+        });
+      } else {
+        res = await fetch(`${API_BASE}/advising/create`, {
+          method: "POST",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify(payload)
+        });
+      }
+
+      if (!res.ok) {
+        const err = await res.json().catch(()=>({message:"Server error"}));
+        messageEl.textContent = err.message || "Failed to save";
+        saveBtn.disabled = false;
+        saveBtn.textContent = "Save";
+        return;
+      }
+
+      messageEl.style.color = "#0f5132";
+      messageEl.textContent = "✅ Advising record saved successfully!";
+      setTimeout(() => window.location.href = "classes.html", 1000);
+    } catch (err) {
+      console.error(err);
+      messageEl.textContent = "Network or server error.";
+      saveBtn.disabled = false;
+      saveBtn.textContent = "Save";
+    }
+  });
+</script>
+</body>
+</html>
