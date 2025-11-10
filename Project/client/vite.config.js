@@ -1,19 +1,21 @@
 import { defineConfig } from "vite";
 import { resolve } from "path";
+import fs from "fs";
+
+const htmlFiles = fs
+  .readdirSync(__dirname)
+  .filter((file) => file.endsWith(".html"))
+  .reduce((inputs, file) => {
+    inputs[file.replace(".html", "")] = resolve(__dirname, file);
+    return inputs;
+  }, {});
 
 export default defineConfig({
-  root: ".", // Keep current folder as root
+  root: ".",
   build: {
-    outDir: "dist", // Output folder
+    outDir: "dist",
     rollupOptions: {
-      input: {
-        main: resolve(__dirname, "index.html"),
-        signin: resolve(__dirname, "signin.html"),
-        profile: resolve(__dirname, "profile.html"),
-        verifyOtp: resolve(__dirname, "verify-otp.html"),
-        forgot: resolve(__dirname, "forgot.html"),
-        home: resolve(__dirname, "home.html"),
-      },
+      input: htmlFiles,
     },
   },
   server: {
