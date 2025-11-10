@@ -62,6 +62,12 @@
   </div>
 
   <script>
+    // ✅ Automatically switch between local and Render backend
+    const backendBaseUrl =
+      window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
+        ? "http://127.0.0.1:8080"
+        : "https://cs418518-f25-clean.onrender.com"
+
     document.getElementById("otpForm").addEventListener("submit", async (e) => {
       e.preventDefault();
 
@@ -75,7 +81,7 @@
       }
 
       try {
-        const res = await fetch("http://127.0.0.1:8080/user/verify-otp", {
+        const res = await fetch(`${backendBaseUrl}/user/verify-otp`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, otp }),
@@ -83,21 +89,21 @@
 
         const data = await res.json();
 
-        if (res.ok && data.status === 200) {
+        if (res.ok && (data.status === 200 || data.success)) {
           alert("OTP verified successfully!");
 
-          // ✅ Save permanent login info
+          // ✅ Store permanent login info
           localStorage.removeItem("pendingEmail");
           localStorage.setItem("userEmail", email);
           localStorage.setItem("username", `${data.firstName || "User"} ${data.lastName || ""}`.trim());
 
           window.location.href = "home.html";
         } else {
-          alert(data.message || "Invalid OTP.");
+          alert(data.message || "Invalid OTP. Please try again.");
         }
       } catch (err) {
         console.error("Error verifying OTP:", err);
-        alert("Error verifying OTP. Please try again.");
+        alert("Server error while verifying OTP. Please try again later.");
       }
     });
   </script>

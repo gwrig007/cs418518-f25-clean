@@ -6,7 +6,6 @@
   <title>ODU Course Advising Portal</title>
   <link rel="stylesheet" href="style.css" />
   <style>
-    /* ====== GLOBAL ====== */
     body {
       font-family: "Segoe UI", Arial, sans-serif;
       margin: 0;
@@ -15,13 +14,13 @@
     }
 
     header {
-      background-color: #003366; /* ODU Navy Blue */
+      background-color: #003366;
       color: white;
       padding: 15px 30px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     }
 
     header img {
@@ -61,7 +60,7 @@
       background: white;
       padding: 40px;
       border-radius: 12px;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
       text-align: center;
       animation: fadeIn 0.5s ease-in-out;
     }
@@ -110,7 +109,6 @@
   </style>
 </head>
 <body>
-  <!-- ====== HEADER ====== -->
   <header>
     <div style="display: flex; align-items: center; gap: 15px;">
       <img src="https://upload.wikimedia.org/wikipedia/en/2/2d/Old_Dominion_Monarchs_logo.svg" alt="ODU Logo">
@@ -118,14 +116,12 @@
     </div>
   </header>
 
-  <!-- ====== NAVIGATION ====== -->
   <nav>
     <a href="profile.html" id="profileLink">Profile</a>
     <a href="classes.html" id="classesLink">My Classes</a>
     <a href="#" id="logoutLink">Logout</a>
   </nav>
 
-  <!-- ====== MAIN CONTENT ====== -->
   <div class="content">
     <h2 class="welcome">Welcome, <span id="username">Student</span>!</h2>
     <p class="info">
@@ -133,14 +129,18 @@
     </p>
   </div>
 
-  <!-- ====== FOOTER ====== -->
   <footer>
     © 2025 Old Dominion University | Course Advising System
   </footer>
 
-  <!-- ====== SCRIPT ====== -->
   <script>
     document.addEventListener("DOMContentLoaded", async () => {
+      // ✅ Auto-detect local vs. production backend
+      const backendBaseUrl =
+        window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
+          ? "http://127.0.0.1:8080"
+          : " https://cs418518-f25-clean.onrender.com"
+
       const email = localStorage.getItem("userEmail");
       const username = localStorage.getItem("username");
       const usernameEl = document.getElementById("username");
@@ -151,18 +151,20 @@
         return;
       }
 
-      // Display stored name immediately
+      // Show stored name right away
       if (username) usernameEl.textContent = username;
 
-      // Fetch live data from backend if available
+      // Try to refresh profile data from backend
       if (email) {
         try {
-          const res = await fetch("https://your-render-app.onrender.com/user/login", {
+          const res = await fetch(`${backendBaseUrl}/user/profile?email=${encodeURIComponent(email)}`);
           const data = await res.json();
+
           if (res.ok) {
             const firstName = data.firstName || data.u_first_name || "";
             const lastName = data.lastName || data.u_last_name || "";
             const fullName = `${firstName} ${lastName}`.trim() || "Student";
+
             usernameEl.textContent = fullName;
             localStorage.setItem("username", fullName);
           }
@@ -171,7 +173,7 @@
         }
       }
 
-      // Logout handler
+      // ✅ Logout handler
       document.getElementById("logoutLink").addEventListener("click", (e) => {
         e.preventDefault();
         localStorage.clear();
