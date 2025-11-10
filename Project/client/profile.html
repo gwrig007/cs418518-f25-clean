@@ -54,7 +54,7 @@
 
       // 🟦 Load current profile
       try {
-        const res = await fetch(`http://localhost:8080/user/profile?email=${email}`);
+        const res = await fetch("https://your-render-app.onrender.com/user/signin", {
         const data = await res.json();
 
         if (res.ok) {
