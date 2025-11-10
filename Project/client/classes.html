@@ -137,19 +137,45 @@
       padding: 28px 0;
     }
 
-    .status-pending {
-      color: #d97706;
+    .status-pending { color: #d97706; font-weight: 600; }
+    .status-approved { color: #0f5132; font-weight: 600; }
+    .status-rejected { color: #842029; font-weight: 600; }
+
+    /* Registered Courses Section */
+    .current-courses {
+      margin-top: 40px;
+      padding: 20px;
+      border: 2px solid var(--odu-gold);
+      border-radius: 10px;
+      background-color: #f9f9f9;
+    }
+
+    .current-courses h3 {
+      margin-top: 0;
+      color: var(--odu-navy);
+      font-size: 1.2rem;
+      border-bottom: 2px solid var(--odu-gold);
+      padding-bottom: 8px;
+    }
+
+    .course-list {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .course-tag {
+      background-color: var(--odu-gold);
+      color: var(--odu-navy);
+      padding: 6px 12px;
+      border-radius: 6px;
       font-weight: 600;
     }
 
-    .status-approved {
-      color: #0f5132;
-      font-weight: 600;
-    }
-
-    .status-rejected {
-      color: #842029;
-      font-weight: 600;
+    .no-courses {
+      color: #666;
+      margin-top: 8px;
     }
   </style>
 </head>
@@ -187,6 +213,13 @@
       <div id="noRecords" class="no-records" style="display:none;">
         No advising records found.
       </div>
+    </div>
+
+    <!-- 🟦 Current Registered Courses Section -->
+    <div class="current-courses">
+      <h3>Currently Registered Courses</h3>
+      <div id="courseList" class="course-list"></div>
+      <div id="noCourses" class="no-courses" style="display:none;">No registered courses found.</div>
     </div>
   </div>
 
@@ -233,7 +266,7 @@
             <td class="${statusClass(r.status)}">${r.status}</td>
           `;
           tr.addEventListener("click", () => {
-            window.location.href = \`advising-form.html?id=\${r.id}\`;
+            window.location.href = `advising-form.html?id=${r.id}`;
           });
           body.appendChild(tr);
         });
@@ -241,6 +274,32 @@
         console.error(err);
         document.getElementById("noRecords").innerText = "Unable to load advising history.";
         document.getElementById("noRecords").style.display = "block";
+      }
+    }
+
+    async function loadCurrentCourses() {
+      try {
+        const res = await fetch(`${API_BASE}/advising/last-courses?email=${encodeURIComponent(email)}&term=Current`);
+        const courses = await res.json();
+        const list = document.getElementById("courseList");
+        const none = document.getElementById("noCourses");
+
+        list.innerHTML = "";
+        if (!courses || courses.length === 0) {
+          none.style.display = "block";
+          return;
+        }
+        none.style.display = "none";
+
+        courses.forEach(c => {
+          const tag = document.createElement("div");
+          tag.className = "course-tag";
+          tag.textContent = c.course_name || c;
+          list.appendChild(tag);
+        });
+      } catch (err) {
+        console.error("Error loading current courses:", err);
+        document.getElementById("noCourses").style.display = "block";
       }
     }
 
@@ -271,6 +330,7 @@
     });
 
     loadHistory();
+    loadCurrentCourses();
   </script>
 </body>
 </html>
