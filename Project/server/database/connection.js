@@ -1,3 +1,4 @@
+// database/connection.js
 import mysql from "mysql2/promise";
 
 export const pool = mysql.createPool({
@@ -9,14 +10,10 @@ export const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-
-  // ✅ Works for Clever Cloud (self-signed or non-SSL)
-  ssl: {
-    rejectUnauthorized: false,
-  },
+  ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: true } : false, // ✅ Toggle SSL dynamically
 });
 
-// quick connection test when the server starts
+// Quick test when the server starts
 try {
   const conn = await pool.getConnection();
   console.log("✅ Connected to Clever Cloud MySQL!");
