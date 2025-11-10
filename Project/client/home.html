@@ -3,51 +3,24 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ODU Course Advising Portal</title>
+  <title>Home | ODU Course Advising Portal</title>
   <link rel="stylesheet" href="style.css" />
   <style>
     body {
+      background-color: var(--odu-white);
+      color: var(--odu-navy);
       font-family: "Segoe UI", Arial, sans-serif;
       margin: 0;
-      background-color: #f4f6fa;
-      color: #003366;
-      position: relative;
-      overflow-x: hidden;
-      min-height: 100vh;
     }
 
-    /* Background watermark */
-    body::after {
-      content: "";
-      position: fixed;
-      bottom: 30px;
-      right: 30px;
-      width: 220px;
-      height: 220px;
-      background: url('https://upload.wikimedia.org/wikipedia/en/2/2d/Old_Dominion_Monarchs_logo.svg') no-repeat center;
-      background-size: contain;
-      opacity: 0.08;
-      z-index: 0;
-      pointer-events: none;
-    }
-
-    /* HEADER */
     header {
-      background-color: #003366;
-      color: white;
-      padding: 15px 30px;
+      background-color: var(--odu-navy);
+      color: var(--odu-white);
       display: flex;
-      align-items: center;
       justify-content: space-between;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-      position: relative;
-      z-index: 10;
-    }
-
-    header .logo {
-      display: flex;
       align-items: center;
-      gap: 15px;
+      padding: 15px 30px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
     }
 
     header img {
@@ -55,76 +28,20 @@
     }
 
     header h1 {
-      font-size: 1.4rem;
+      font-size: 1.5rem;
       margin: 0;
       font-weight: 600;
     }
 
-    /* DROPDOWN MENU */
-    .user-menu {
-      position: relative;
-    }
-
-    .user-btn {
-      background: transparent;
-      color: white;
-      border: none;
-      font-size: 1rem;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-weight: 500;
-    }
-
-    .user-btn:hover {
-      opacity: 0.9;
-    }
-
-    .dropdown {
-      display: none;
-      position: absolute;
-      top: 45px;
-      right: 0;
-      background: white;
-      color: #003366;
-      border-radius: 8px;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-      min-width: 180px;
-      z-index: 1000;
-    }
-
-    .dropdown a {
-      display: block;
-      padding: 12px 15px;
-      text-decoration: none;
-      color: #003366;
-      font-weight: 500;
-    }
-
-    .dropdown a:hover {
-      background-color: #f0f4ff;
-      color: #007bff;
-    }
-
-    .dropdown hr {
-      border: none;
-      border-top: 1px solid #e5e7eb;
-      margin: 5px 0;
-    }
-
-    /* MAIN CONTENT */
     .content {
       max-width: 800px;
-      margin: 80px auto;
-      background: white;
+      margin: 60px auto;
+      background: var(--odu-white);
       padding: 40px;
       border-radius: 12px;
       box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
       text-align: center;
       animation: fadeIn 0.5s ease-in-out;
-      position: relative;
-      z-index: 1;
     }
 
     @keyframes fadeIn {
@@ -135,11 +52,11 @@
     .welcome {
       font-size: 1.6rem;
       margin-bottom: 20px;
-      color: #003366;
+      color: var(--odu-navy);
     }
 
     .info {
-      color: #444;
+      color: #333;
       font-size: 1rem;
       line-height: 1.6;
     }
@@ -151,105 +68,145 @@
       color: #666;
       border-top: 1px solid #ddd;
       margin-top: 60px;
-      background: #fff;
-      position: relative;
-      z-index: 2;
     }
 
-    /* Responsive */
-    @media (max-width: 600px) {
-      header {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-      .user-menu {
-        margin-top: 10px;
-        align-self: flex-end;
-      }
+    /* Dropdown menu styles */
+    .dropdown {
+      position: relative;
+      display: inline-block;
+    }
+
+    .dropdown-toggle {
+      background-color: var(--odu-gold);
+      color: var(--odu-navy);
+      border: none;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .dropdown-toggle:hover {
+      background-color: var(--odu-white);
+      color: var(--odu-navy);
+      border: 1px solid var(--odu-gold);
+    }
+
+    .dropdown-menu {
+      display: none;
+      position: absolute;
+      right: 0;
+      top: 48px;
+      background-color: var(--odu-white);
+      border: 1px solid var(--odu-gold);
+      border-radius: 8px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+      min-width: 180px;
+      z-index: 999;
+      overflow: hidden;
+      animation: dropdownFade 0.2s ease-in-out;
+    }
+
+    .dropdown-menu a {
+      display: block;
+      padding: 12px 16px;
+      text-decoration: none;
+      color: var(--odu-navy);
+      font-weight: 500;
+      transition: background 0.3s ease;
+    }
+
+    .dropdown-menu a:hover {
+      background-color: var(--odu-gold);
+      color: var(--odu-navy);
+    }
+
+    .dropdown.show .dropdown-menu {
+      display: block;
+    }
+
+    @keyframes dropdownFade {
+      from { opacity: 0; transform: translateY(-5px); }
+      to { opacity: 1; transform: translateY(0); }
     }
   </style>
 </head>
 <body>
   <header>
-    <div class="logo">
+    <div style="display:flex;align-items:center;gap:15px;">
       <img src="https://upload.wikimedia.org/wikipedia/en/2/2d/Old_Dominion_Monarchs_logo.svg" alt="ODU Logo" />
       <h1>ODU Course Advising Portal</h1>
     </div>
 
-    <div class="user-menu">
-      <button class="user-btn" id="userMenuBtn">
-        <span id="username">Student</span> ▼
-      </button>
-      <div class="dropdown" id="userDropdown">
+    <div class="dropdown" id="menuDropdown">
+      <button class="dropdown-toggle">☰ Menu</button>
+      <div class="dropdown-menu">
         <a href="profile.html">Profile</a>
         <a href="classes.html">Course Advising</a>
-        <hr />
         <a href="#" id="logoutLink">Logout</a>
       </div>
     </div>
   </header>
 
-  <main class="content">
-    <h2 class="welcome">Welcome back, <span id="welcomeName">Student</span>!</h2>
+  <div class="content">
+    <h2 class="welcome">Welcome, <span id="username">Student</span>!</h2>
     <p class="info">
-      Access your academic profile, view your course advising history, and plan your future terms — all in one place.
+      Access your course advising information, update your academic profile, and manage your enrolled classes easily from this portal.
     </p>
-  </main>
+  </div>
 
   <footer>
     © 2025 Old Dominion University | Course Advising System
   </footer>
 
   <script>
+    // Backend URL
     const backendBaseUrl =
-      window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
+      window.location.hostname.includes("localhost") || window.location.hostname.includes("127.0.0.1")
         ? "http://127.0.0.1:8080"
         : "https://cs418518-f25-clean.onrender.com";
 
     const email = localStorage.getItem("userEmail");
     const username = localStorage.getItem("username");
-
-    const userMenuBtn = document.getElementById("userMenuBtn");
-    const dropdown = document.getElementById("userDropdown");
     const usernameEl = document.getElementById("username");
-    const welcomeName = document.getElementById("welcomeName");
 
-    if (!email) {
+    if (!email && !username) {
       alert("Please sign in again.");
       window.location.href = "signin.html";
     }
 
-    if (username) {
-      usernameEl.textContent = username;
-      welcomeName.textContent = username;
+    if (username) usernameEl.textContent = username;
+
+    // fetch name from backend
+    if (email) {
+      fetch(`${backendBaseUrl}/user/profile?email=${encodeURIComponent(email)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.firstName || data.lastName) {
+            const fullName = `${data.firstName || ""} ${data.lastName || ""}`.trim();
+            usernameEl.textContent = fullName;
+            localStorage.setItem("username", fullName);
+          }
+        })
+        .catch((err) => console.error("Error fetching profile:", err));
     }
 
-    // Toggle dropdown menu
-    userMenuBtn.addEventListener("click", () => {
-      dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+    // dropdown toggle
+    document.querySelector(".dropdown-toggle").addEventListener("click", () => {
+      document.getElementById("menuDropdown").classList.toggle("show");
     });
 
-    // Close dropdown if clicked elsewhere
+    // close menu when clicking outside
     window.addEventListener("click", (e) => {
-      if (!e.target.closest(".user-menu")) dropdown.style.display = "none";
+      const menu = document.getElementById("menuDropdown");
+      if (!menu.contains(e.target)) {
+        menu.classList.remove("show");
+      }
     });
 
-    // Fetch user profile
-    (async function fetchProfile() {
-      try {
-        const res = await fetch(`${backendBaseUrl}/user/profile?email=${encodeURIComponent(email)}`);
-        if (!res.ok) return;
-        const data = await res.json();
-        const name = `${data.firstName || data.u_first_name || ""} ${data.lastName || data.u_last_name || ""}`.trim() || "Student";
-        usernameEl.textContent = name;
-        welcomeName.textContent = name;
-        localStorage.setItem("username", name);
-      } catch (err) {
-        console.error("Profile fetch error:", err);
-      }
-    })();
-
-    // Logout
+    // logout handler
     document.getElementById("logoutLink").addEventListener("click", (e) => {
       e.preventDefault();
       localStorage.clear();
