@@ -6,66 +6,92 @@
   <title>Course Advising History | ODU Portal</title>
   <link rel="stylesheet" href="style.css" />
   <style>
+    :root {
+      --odu-navy: #003366;
+      --odu-blue: #00539B;
+      --light-gray: #f4f6fa;
+    }
+
     body {
       font-family: "Segoe UI", Arial, sans-serif;
-      background: #f4f6fa;
+      background: #ffffff;
       margin: 0;
       padding: 20px;
+      color: var(--odu-navy);
     }
+
     .wrap {
       max-width: 980px;
       margin: 32px auto;
-      background: #fff;
+      background: #ffffff;
       padding: 24px;
       border-radius: 10px;
       box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+      border: 1px solid #e0e6f0;
     }
+
     header {
       display: flex;
       align-items: center;
       justify-content: space-between;
       margin-bottom: 12px;
     }
+
     h1 {
-      font-size: 1.25rem;
-      color: #003366;
+      font-size: 1.4rem;
+      color: var(--odu-navy);
       margin: 0;
     }
+
     .btn {
-      background: #007bff;
+      background: var(--odu-blue);
       color: #fff;
-      padding: 8px 12px;
+      padding: 8px 14px;
       border-radius: 8px;
       border: none;
       cursor: pointer;
-      font-size: 0.95rem;
-      transition: background 0.2s ease;
+      transition: background 0.2s;
+      font-weight: 500;
     }
+
     .btn:hover {
-      background: #0056b3;
+      background: #004080;
     }
+
     table {
       width: 100%;
       border-collapse: collapse;
       margin-top: 16px;
+      color: var(--odu-navy);
     }
+
     th, td {
       padding: 10px 12px;
-      border-bottom: 1px solid #eef2f6;
+      border-bottom: 1px solid #e6ecf3;
       text-align: left;
     }
+
+    th {
+      background: #f8faff;
+      font-weight: 600;
+      color: var(--odu-navy);
+    }
+
     tr.clickable:hover {
-      background: #f6f9ff;
+      background: #f0f6ff;
       cursor: pointer;
     }
+
     .no-records {
       text-align: center;
       color: #666;
       padding: 28px 0;
+      font-style: italic;
     }
-    .status-pending { color: #d97706; font-weight: 600; }
-    .status-approved { color: #0f5132; font-weight: 600; }
-    .status-rejected { color: #842029; font-weight: 600; }
+
+    .status-pending { color: #b8860b; font-weight: 600; }
+    .status-approved { color: #006d3c; font-weight: 600; }
+    .status-rejected { color: #a30000; font-weight: 600; }
   </style>
 </head>
 <body>
@@ -92,7 +118,6 @@
   </div>
 
 <script>
-  // ✅ Dynamic API switch (local vs deployed)
   const API_BASE =
     window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
       ? "http://127.0.0.1:8080"
@@ -100,7 +125,7 @@
 
   const email = localStorage.getItem("userEmail");
   if (!email) {
-    alert("Please sign in again.");
+    alert("Please sign in.");
     window.location.href = "signin.html";
   }
 
@@ -108,7 +133,6 @@
     window.location.href = "advising-form.html";
   });
 
-  // ✅ Fetch advising history
   async function loadHistory() {
     try {
       const res = await fetch(`${API_BASE}/advising/history?email=${encodeURIComponent(email)}`);
@@ -131,12 +155,12 @@
         const tr = document.createElement("tr");
         tr.className = "clickable";
         tr.innerHTML = `
-          <td>${r.date || ""}</td>
+          <td>${r.date}</td>
           <td>${r.term || ""}</td>
           <td class="${statusClass(r.status)}">${r.status}</td>
         `;
         tr.addEventListener("click", () => {
-          window.location.href = `advising-form.html?id=${r.id}`;
+          window.location.href = \`advising-form.html?id=\${r.id}\`;
         });
         body.appendChild(tr);
       });
@@ -147,17 +171,16 @@
     }
   }
 
-  function statusClass(status) {
-    if (!status) return "";
-    const s = status.toLowerCase();
-    if (s === "pending") return "status-pending";
-    if (s === "approved") return "status-approved";
-    if (s === "rejected") return "status-rejected";
-    return "";
+  function statusClass(s) {
+    if (!s) return "";
+    return s.toLowerCase() === "pending"
+      ? "status-pending"
+      : s.toLowerCase() === "approved"
+      ? "status-approved"
+      : "status-rejected";
   }
 
   loadHistory();
 </script>
 </body>
 </html>
-

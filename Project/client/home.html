@@ -8,9 +8,9 @@
   <style>
     body {
       font-family: "Segoe UI", Arial, sans-serif;
+      background-color: #ffffff;
+      color: #002855;
       margin: 0;
-      background-color: #f4f6fa;
-      color: #333;
     }
 
     header {
@@ -34,11 +34,11 @@
     }
 
     nav {
-      background-color: #fefefe;
+      background-color: #f8f9fc;
       display: flex;
       justify-content: center;
-      gap: 30px;
-      padding: 15px;
+      gap: 40px;
+      padding: 15px 0;
       border-bottom: 2px solid #e5e7eb;
       font-size: 1.1rem;
     }
@@ -46,8 +46,8 @@
     nav a {
       text-decoration: none;
       color: #003366;
-      font-weight: 500;
-      transition: color 0.3s;
+      font-weight: 600;
+      transition: color 0.3s ease;
     }
 
     nav a:hover {
@@ -57,7 +57,7 @@
     .content {
       max-width: 800px;
       margin: 60px auto;
-      background: white;
+      background: #fff;
       padding: 40px;
       border-radius: 12px;
       box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
@@ -71,13 +71,13 @@
     }
 
     .welcome {
-      font-size: 1.6rem;
-      margin-bottom: 20px;
-      color: #003366;
+      font-size: 1.8rem;
+      margin-bottom: 16px;
+      color: #002855;
     }
 
     .info {
-      color: #555;
+      color: #444;
       font-size: 1rem;
       line-height: 1.6;
     }
@@ -90,7 +90,7 @@
       border-radius: 8px;
       font-size: 1rem;
       cursor: pointer;
-      margin-top: 20px;
+      margin-top: 25px;
       transition: background-color 0.3s ease;
     }
 
@@ -117,8 +117,8 @@
   </header>
 
   <nav>
-    <a href="profile.html" id="profileLink">Profile</a>
-    <a href="classes.html" id="classesLink">My Classes</a>
+    <a href="profile.html">Profile</a>
+    <a href="classes.html">My Classes</a>
     <a href="#" id="logoutLink">Logout</a>
   </nav>
 
@@ -127,6 +127,7 @@
     <p class="info">
       Access your course advising information, update your academic profile, and manage your enrolled classes easily from this portal.
     </p>
+    <button class="logout-btn" id="logoutButton">Logout</button>
   </div>
 
   <footer>
@@ -135,11 +136,10 @@
 
   <script>
     document.addEventListener("DOMContentLoaded", async () => {
-      // ✅ Auto-detect local vs. production backend
       const backendBaseUrl =
-        window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
+        window.location.hostname.includes("localhost") || window.location.hostname.includes("127.0.0.1")
           ? "http://127.0.0.1:8080"
-          : " https://cs418518-f25-clean.onrender.com"
+          : "https://cs418518-f25-clean.onrender.com";
 
       const email = localStorage.getItem("userEmail");
       const username = localStorage.getItem("username");
@@ -151,31 +151,22 @@
         return;
       }
 
-      // Show stored name right away
       if (username) usernameEl.textContent = username;
 
-      // Try to refresh profile data from backend
-      if (email) {
-        try {
-          const res = await fetch(`${backendBaseUrl}/user/profile?email=${encodeURIComponent(email)}`);
-          const data = await res.json();
+      try {
+        const res = await fetch(`${backendBaseUrl}/user/profile?email=${encodeURIComponent(email)}`);
+        const data = await res.json();
 
-          if (res.ok) {
-            const firstName = data.firstName || data.u_first_name || "";
-            const lastName = data.lastName || data.u_last_name || "";
-            const fullName = `${firstName} ${lastName}`.trim() || "Student";
-
-            usernameEl.textContent = fullName;
-            localStorage.setItem("username", fullName);
-          }
-        } catch (err) {
-          console.error("Error fetching profile:", err);
+        if (res.ok) {
+          const fullName = `${data.firstName || ""} ${data.lastName || ""}`.trim() || "Student";
+          usernameEl.textContent = fullName;
+          localStorage.setItem("username", fullName);
         }
+      } catch (err) {
+        console.error("Error fetching profile:", err);
       }
 
-      // ✅ Logout handler
-      document.getElementById("logoutLink").addEventListener("click", (e) => {
-        e.preventDefault();
+      document.getElementById("logoutButton").addEventListener("click", () => {
         localStorage.clear();
         alert("You have been logged out.");
         window.location.href = "signin.html";

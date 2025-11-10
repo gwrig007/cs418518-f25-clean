@@ -6,21 +6,130 @@
   <title>Advising Form | ODU Portal</title>
   <link rel="stylesheet" href="style.css" />
   <style>
-    body{font-family:"Segoe UI",Arial,sans-serif;background:#f4f6fa;margin:0;padding:20px}
-    .wrap{max-width:980px;margin:28px auto;background:#fff;padding:20px;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.06)}
-    h1{color:#003366;margin:0 0 12px 0;font-size:1.15rem}
-    .grid{display:flex;gap:12px;align-items:flex-end}
-    .col{flex:1}
-    label{display:block;margin-bottom:6px;color:#333;font-size:0.9rem}
-    input, select{width:100%;padding:8px;border-radius:6px;border:1px solid #ddd}
-    .courses{margin-top:16px}
-    .course-row{display:flex;gap:8px;margin-bottom:8px}
-    .course-row select{flex:1}
-    .btn{background:#007bff;color:#fff;padding:8px 12px;border-radius:8px;border:none;cursor:pointer}
-    .btn.secondary{background:#6c757d}
-    .small{width:120px}
-    .msg{margin-top:12px;color:#b11f24;font-weight:500}
-    .disabled{opacity:.6}
+    :root {
+      --odu-navy: #003366;
+      --odu-blue: #00539B;
+      --light-gray: #f4f6fa;
+    }
+
+    body {
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: #ffffff;
+      margin: 0;
+      padding: 20px;
+      color: var(--odu-navy);
+    }
+
+    .wrap {
+      max-width: 980px;
+      margin: 28px auto;
+      background: #ffffff;
+      padding: 24px;
+      border-radius: 10px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+      border: 1px solid #e0e6f0;
+    }
+
+    h1 {
+      color: var(--odu-navy);
+      margin: 0 0 16px 0;
+      font-size: 1.4rem;
+    }
+
+    h3 {
+      color: var(--odu-navy);
+      margin-top: 24px;
+      margin-bottom: 8px;
+    }
+
+    .grid {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .col {
+      flex: 1;
+      min-width: 180px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--odu-navy);
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #ccd4e0;
+      font-size: 0.95rem;
+      color: var(--odu-navy);
+      background: #f9fbff;
+    }
+
+    .courses {
+      margin-top: 20px;
+    }
+
+    .course-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+
+    .course-row select {
+      flex: 1;
+      min-width: 150px;
+    }
+
+    .btn {
+      background: var(--odu-blue);
+      color: #fff;
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s;
+      font-weight: 500;
+    }
+
+    .btn:hover {
+      background: #004080;
+    }
+
+    .btn.secondary {
+      background: #6c757d;
+    }
+
+    .btn.secondary:hover {
+      background: #5a6268;
+    }
+
+    .small {
+      width: 120px;
+    }
+
+    .msg {
+      margin-top: 14px;
+      color: #a30000;
+      font-weight: 500;
+    }
+
+    .disabled {
+      opacity: 0.6;
+    }
+
+    .footer-btns {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+    }
   </style>
 </head>
 <body>
@@ -52,7 +161,7 @@
       </div>
     </section>
 
-    <div style="margin-top:16px">
+    <div class="footer-btns">
       <button id="saveBtn" class="btn">Save</button>
       <button id="cancelBtn" class="btn secondary">Cancel</button>
     </div>
@@ -72,7 +181,6 @@
   const params = new URLSearchParams(window.location.search);
   const recordId = params.get("id");
 
-  // Example dropdown options — replace with dynamic API if desired
   const LEVELS = ["Undergraduate", "Graduate"];
   const COURSES = ["MATH 101","CS 201","CS 301","ENG 210","HIST 101","BIO 110"];
 
@@ -109,16 +217,10 @@
     const courseSel = createSelect(["", ...COURSES], data.name || "");
     courseSel.style.flex = "1";
 
-    // Validation for duplicates and last term
     courseSel.addEventListener("change", ()=> {
       const val = courseSel.value;
-      const selectedCourses = gatherCourses().map(c => c.name);
-
       if (val && lastTermCourses.includes(val)) {
         messageEl.textContent = `You already took ${val} in ${lastTermInput.value}. Remove it from your plan.`;
-        courseSel.value = "";
-      } else if (selectedCourses.filter(n => n === val).length > 1) {
-        messageEl.textContent = `${val} is already in your plan.`;
         courseSel.value = "";
       } else {
         messageEl.textContent = "";
@@ -126,9 +228,8 @@
     });
 
     const removeBtn = document.createElement("button");
-    removeBtn.className = "btn secondary";
+    removeBtn.className = "btn secondary small";
     removeBtn.textContent = "Remove";
-    removeBtn.style.width = "100px";
     removeBtn.addEventListener("click", (ev)=> { ev.preventDefault(); courseRowsEl.removeChild(row); });
 
     row.appendChild(levelSel);
@@ -173,7 +274,6 @@
       document.getElementById("currentTerm").value = record.current_term || "";
 
       await fetchLastTermCourses(record.last_term);
-
       courseRowsEl.innerHTML = "";
       (courses || []).forEach(c => addCourseRow({ level: c.course_level || LEVELS[0], name: c.course_name }));
 
@@ -222,9 +322,6 @@
     }
 
     try {
-      saveBtn.disabled = true;
-      saveBtn.textContent = "Saving...";
-
       let res;
       if (recordId) {
         res = await fetch(`${API_BASE}/advising/update/${recordId}`, {
@@ -243,19 +340,13 @@
       if (!res.ok) {
         const err = await res.json().catch(()=>({message:"Server error"}));
         messageEl.textContent = err.message || "Failed to save";
-        saveBtn.disabled = false;
-        saveBtn.textContent = "Save";
         return;
       }
 
-      messageEl.style.color = "#0f5132";
-      messageEl.textContent = "✅ Advising record saved successfully!";
-      setTimeout(() => window.location.href = "classes.html", 1000);
+      window.location.href = "classes.html";
     } catch (err) {
       console.error(err);
       messageEl.textContent = "Network or server error.";
-      saveBtn.disabled = false;
-      saveBtn.textContent = "Save";
     }
   });
 </script>

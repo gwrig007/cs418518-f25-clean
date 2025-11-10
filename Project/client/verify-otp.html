@@ -4,11 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Verify OTP | ODU Course Advising Portal</title>
-  <link rel="stylesheet" href="../style.css" />
+  <link rel="stylesheet" href="style.css" />
   <style>
     body {
       font-family: "Segoe UI", Arial, sans-serif;
-      background: linear-gradient(135deg, #4364f7, #6fb1fc);
+      background-color: #ffffff;
+      color: #002855;
       height: 100vh;
       display: flex;
       justify-content: center;
@@ -16,37 +17,52 @@
       margin: 0;
     }
     .container {
-      background: rgba(255, 255, 255, 0.15);
+      background: #fff;
       padding: 40px 30px;
       border-radius: 12px;
-      backdrop-filter: blur(10px);
-      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
-      color: white;
-      width: 320px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
       text-align: center;
+      width: 340px;
     }
-    input, button {
+    h2 {
+      margin-bottom: 10px;
+      color: #003366;
+    }
+    p {
+      font-size: 0.95rem;
+      color: #333;
+      margin-bottom: 20px;
+    }
+    input {
       width: 100%;
       padding: 10px;
-      margin-bottom: 15px;
+      border: 1px solid #ccc;
       border-radius: 8px;
-      border: none;
-      outline: none;
+      margin-bottom: 15px;
+      font-size: 1rem;
     }
     button {
+      width: 100%;
+      padding: 10px;
       background-color: #007bff;
       color: white;
-      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
       cursor: pointer;
-      transition: 0.3s ease;
+      transition: background-color 0.3s;
     }
     button:hover {
       background-color: #0056b3;
     }
     a {
-      color: #ffeb3b;
+      display: block;
+      margin-top: 15px;
+      color: #007bff;
       text-decoration: none;
-      font-size: 14px;
+    }
+    a:hover {
+      text-decoration: underline;
     }
   </style>
 </head>
@@ -62,11 +78,10 @@
   </div>
 
   <script>
-    // ✅ Automatically switch between local and Render backend
     const backendBaseUrl =
-      window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
+      window.location.hostname.includes("localhost") || window.location.hostname.includes("127.0.0.1")
         ? "http://127.0.0.1:8080"
-        : "https://cs418518-f25-clean.onrender.com"
+        : "https://cs418518-f25-clean.onrender.com";
 
     document.getElementById("otpForm").addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -91,12 +106,9 @@
 
         if (res.ok && (data.status === 200 || data.success)) {
           alert("OTP verified successfully!");
-
-          // ✅ Store permanent login info
           localStorage.removeItem("pendingEmail");
           localStorage.setItem("userEmail", email);
           localStorage.setItem("username", `${data.firstName || "User"} ${data.lastName || ""}`.trim());
-
           window.location.href = "home.html";
         } else {
           alert(data.message || "Invalid OTP. Please try again.");
