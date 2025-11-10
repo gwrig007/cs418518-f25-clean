@@ -8,11 +8,30 @@
   <style>
     body {
       font-family: "Segoe UI", Arial, sans-serif;
-      background-color: #ffffff;
-      color: #002855;
       margin: 0;
+      background-color: #f4f6fa;
+      color: #003366;
+      position: relative;
+      overflow-x: hidden;
+      min-height: 100vh;
     }
 
+    /* Background watermark */
+    body::after {
+      content: "";
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      width: 220px;
+      height: 220px;
+      background: url('https://upload.wikimedia.org/wikipedia/en/2/2d/Old_Dominion_Monarchs_logo.svg') no-repeat center;
+      background-size: contain;
+      opacity: 0.08;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* HEADER */
     header {
       background-color: #003366;
       color: white;
@@ -21,6 +40,14 @@
       align-items: center;
       justify-content: space-between;
       box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      position: relative;
+      z-index: 10;
+    }
+
+    header .logo {
+      display: flex;
+      align-items: center;
+      gap: 15px;
     }
 
     header img {
@@ -28,41 +55,76 @@
     }
 
     header h1 {
-      font-size: 1.5rem;
+      font-size: 1.4rem;
       margin: 0;
       font-weight: 600;
     }
 
-    nav {
-      background-color: #f8f9fc;
-      display: flex;
-      justify-content: center;
-      gap: 40px;
-      padding: 15px 0;
-      border-bottom: 2px solid #e5e7eb;
-      font-size: 1.1rem;
+    /* DROPDOWN MENU */
+    .user-menu {
+      position: relative;
     }
 
-    nav a {
+    .user-btn {
+      background: transparent;
+      color: white;
+      border: none;
+      font-size: 1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 500;
+    }
+
+    .user-btn:hover {
+      opacity: 0.9;
+    }
+
+    .dropdown {
+      display: none;
+      position: absolute;
+      top: 45px;
+      right: 0;
+      background: white;
+      color: #003366;
+      border-radius: 8px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+      min-width: 180px;
+      z-index: 1000;
+    }
+
+    .dropdown a {
+      display: block;
+      padding: 12px 15px;
       text-decoration: none;
       color: #003366;
-      font-weight: 600;
-      transition: color 0.3s ease;
+      font-weight: 500;
     }
 
-    nav a:hover {
+    .dropdown a:hover {
+      background-color: #f0f4ff;
       color: #007bff;
     }
 
+    .dropdown hr {
+      border: none;
+      border-top: 1px solid #e5e7eb;
+      margin: 5px 0;
+    }
+
+    /* MAIN CONTENT */
     .content {
       max-width: 800px;
-      margin: 60px auto;
-      background: #fff;
+      margin: 80px auto;
+      background: white;
       padding: 40px;
       border-radius: 12px;
       box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
       text-align: center;
       animation: fadeIn 0.5s ease-in-out;
+      position: relative;
+      z-index: 1;
     }
 
     @keyframes fadeIn {
@@ -71,31 +133,15 @@
     }
 
     .welcome {
-      font-size: 1.8rem;
-      margin-bottom: 16px;
-      color: #002855;
+      font-size: 1.6rem;
+      margin-bottom: 20px;
+      color: #003366;
     }
 
     .info {
       color: #444;
       font-size: 1rem;
       line-height: 1.6;
-    }
-
-    .logout-btn {
-      background-color: #b11f24;
-      color: white;
-      border: none;
-      padding: 10px 18px;
-      border-radius: 8px;
-      font-size: 1rem;
-      cursor: pointer;
-      margin-top: 25px;
-      transition: background-color 0.3s ease;
-    }
-
-    .logout-btn:hover {
-      background-color: #8c171c;
     }
 
     footer {
@@ -105,72 +151,110 @@
       color: #666;
       border-top: 1px solid #ddd;
       margin-top: 60px;
+      background: #fff;
+      position: relative;
+      z-index: 2;
+    }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .user-menu {
+        margin-top: 10px;
+        align-self: flex-end;
+      }
     }
   </style>
 </head>
 <body>
   <header>
-    <div style="display: flex; align-items: center; gap: 15px;">
-      <img src="https://upload.wikimedia.org/wikipedia/en/2/2d/Old_Dominion_Monarchs_logo.svg" alt="ODU Logo">
+    <div class="logo">
+      <img src="https://upload.wikimedia.org/wikipedia/en/2/2d/Old_Dominion_Monarchs_logo.svg" alt="ODU Logo" />
       <h1>ODU Course Advising Portal</h1>
+    </div>
+
+    <div class="user-menu">
+      <button class="user-btn" id="userMenuBtn">
+        <span id="username">Student</span> ▼
+      </button>
+      <div class="dropdown" id="userDropdown">
+        <a href="profile.html">Profile</a>
+        <a href="classes.html">Course Advising</a>
+        <hr />
+        <a href="#" id="logoutLink">Logout</a>
+      </div>
     </div>
   </header>
 
-  <nav>
-    <a href="profile.html">Profile</a>
-    <a href="classes.html">My Classes</a>
-    <a href="#" id="logoutLink">Logout</a>
-  </nav>
-
-  <div class="content">
-    <h2 class="welcome">Welcome, <span id="username">Student</span>!</h2>
+  <main class="content">
+    <h2 class="welcome">Welcome back, <span id="welcomeName">Student</span>!</h2>
     <p class="info">
-      Access your course advising information, update your academic profile, and manage your enrolled classes easily from this portal.
+      Access your academic profile, view your course advising history, and plan your future terms — all in one place.
     </p>
-    <button class="logout-btn" id="logoutButton">Logout</button>
-  </div>
+  </main>
 
   <footer>
     © 2025 Old Dominion University | Course Advising System
   </footer>
 
   <script>
-    document.addEventListener("DOMContentLoaded", async () => {
-      const backendBaseUrl =
-        window.location.hostname.includes("localhost") || window.location.hostname.includes("127.0.0.1")
-          ? "http://127.0.0.1:8080"
-          : "https://cs418518-f25-clean.onrender.com";
+    const backendBaseUrl =
+      window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
+        ? "http://127.0.0.1:8080"
+        : "https://cs418518-f25-clean.onrender.com";
 
-      const email = localStorage.getItem("userEmail");
-      const username = localStorage.getItem("username");
-      const usernameEl = document.getElementById("username");
+    const email = localStorage.getItem("userEmail");
+    const username = localStorage.getItem("username");
 
-      if (!email && !username) {
-        alert("Please sign in again.");
-        window.location.href = "signin.html";
-        return;
-      }
+    const userMenuBtn = document.getElementById("userMenuBtn");
+    const dropdown = document.getElementById("userDropdown");
+    const usernameEl = document.getElementById("username");
+    const welcomeName = document.getElementById("welcomeName");
 
-      if (username) usernameEl.textContent = username;
+    if (!email) {
+      alert("Please sign in again.");
+      window.location.href = "signin.html";
+    }
 
+    if (username) {
+      usernameEl.textContent = username;
+      welcomeName.textContent = username;
+    }
+
+    // Toggle dropdown menu
+    userMenuBtn.addEventListener("click", () => {
+      dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+    });
+
+    // Close dropdown if clicked elsewhere
+    window.addEventListener("click", (e) => {
+      if (!e.target.closest(".user-menu")) dropdown.style.display = "none";
+    });
+
+    // Fetch user profile
+    (async function fetchProfile() {
       try {
         const res = await fetch(`${backendBaseUrl}/user/profile?email=${encodeURIComponent(email)}`);
+        if (!res.ok) return;
         const data = await res.json();
-
-        if (res.ok) {
-          const fullName = `${data.firstName || ""} ${data.lastName || ""}`.trim() || "Student";
-          usernameEl.textContent = fullName;
-          localStorage.setItem("username", fullName);
-        }
+        const name = `${data.firstName || data.u_first_name || ""} ${data.lastName || data.u_last_name || ""}`.trim() || "Student";
+        usernameEl.textContent = name;
+        welcomeName.textContent = name;
+        localStorage.setItem("username", name);
       } catch (err) {
-        console.error("Error fetching profile:", err);
+        console.error("Profile fetch error:", err);
       }
+    })();
 
-      document.getElementById("logoutButton").addEventListener("click", () => {
-        localStorage.clear();
-        alert("You have been logged out.");
-        window.location.href = "signin.html";
-      });
+    // Logout
+    document.getElementById("logoutLink").addEventListener("click", (e) => {
+      e.preventDefault();
+      localStorage.clear();
+      alert("You have been logged out.");
+      window.location.href = "signin.html";
     });
   </script>
 </body>

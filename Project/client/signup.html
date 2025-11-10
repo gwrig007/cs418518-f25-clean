@@ -3,130 +3,136 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Course Advising Portal - Sign Up</title>
-<link rel="stylesheet" href="style.css" />
-
-<style>
+  <title>Sign Up | ODU Course Advising Portal</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
     body {
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #4b6cb7, #182848);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-    }
-
-    .container {
       background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-      width: 350px;
+      color: #002855;
+      font-family: "Segoe UI", Arial, sans-serif;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    .container {
+      width: 100%;
+      max-width: 460px;
+      background: #fff;
+      border-radius: 10px;
       padding: 30px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    }
+    h1 {
+      font-size: 1.5rem;
       text-align: center;
-    }
-
-    h2 {
+      color: #003366;
       margin-bottom: 20px;
-      color: #182848;
     }
-
+    label {
+      display: block;
+      margin: 10px 0 6px;
+      font-weight: 600;
+    }
     input {
       width: 100%;
       padding: 10px;
-      margin: 8px 0;
       border: 1px solid #ccc;
       border-radius: 6px;
-      font-size: 14px;
+      font-size: 1rem;
     }
-
     button {
       width: 100%;
-      background: #4b6cb7;
-      color: white;
+      margin-top: 18px;
+      background: #007bff;
       border: none;
+      color: #fff;
       padding: 10px;
-      font-size: 15px;
-      border-radius: 6px;
+      border-radius: 8px;
+      font-size: 1rem;
       cursor: pointer;
-      transition: background 0.3s;
+      transition: 0.2s;
     }
-
-    button:hover {
-      background: #355a9b;
+    button:hover { background: #0056b3; }
+    .link {
+      text-align: center;
+      margin-top: 12px;
     }
-
-    .links {
-      margin-top: 15px;
-      display: flex;
-      justify-content: center;
-      font-size: 13px;
-    }
-
-    .links a {
-      color: #4b6cb7;
-      text-decoration: none;
-    }
-
-    .links a:hover {
-      text-decoration: underline;
-    }
+    .link a { color: #007bff; text-decoration: none; }
+    .link a:hover { text-decoration: underline; }
+    .msg { text-align:center;margin-top:10px;color:#b11f24; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>Create an Account</h2>
-    <form id="signupForm">
-      <input type="text" id="firstName" placeholder="First Name" required />
-      <input type="text" id="lastName" placeholder="Last Name" required />
-      <input type="email" id="email" placeholder="Email Address" required />
-      <input type="password" id="password" placeholder="Create Password" required />
-      <button type="submit">Register</button>
+    <h1>Create Your Account</h1>
 
-      <div class="links">
-        <a href="signin.html">Already have an account? Sign In</a>
-      </div>
-    </form>
+    <label for="firstName">First Name</label>
+    <input type="text" id="firstName" placeholder="e.g. Grace" />
+
+    <label for="lastName">Last Name</label>
+    <input type="text" id="lastName" placeholder="e.g. Wright" />
+
+    <label for="email">Email</label>
+    <input type="email" id="email" placeholder="example@email.com" />
+
+    <label for="password">Password</label>
+    <input type="password" id="password" placeholder="Create a password" />
+
+    <button id="signupBtn">Sign Up</button>
+
+    <div class="link">
+      <a href="signin.html">Already have an account? Sign In</a>
+    </div>
+
+    <div id="msg" class="msg"></div>
   </div>
 
-  <!-- ✅ Script placed after DOM -->
   <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const signupForm = document.getElementById("signupForm");
+    const API_BASE =
+      window.location.hostname.includes("localhost") || window.location.hostname.includes("127.0.0.1")
+        ? "http://127.0.0.1:8080"
+        : "https://cs418518-f25-clean.onrender.com";
 
-      signupForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
+    const btn = document.getElementById("signupBtn");
+    const msg = document.getElementById("msg");
 
-        const firstName = document.getElementById("firstName").value.trim();
-        const lastName = document.getElementById("lastName").value.trim();
-        const email = document.getElementById("email").value.trim();
-        const password = document.getElementById("password").value.trim();
+    btn.addEventListener("click", async () => {
+      msg.textContent = "";
+      const firstName = document.getElementById("firstName").value.trim();
+      const lastName = document.getElementById("lastName").value.trim();
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value.trim();
 
-        if (!firstName || !lastName || !email || !password) {
-          alert("⚠️ Please fill in all fields.");
+      if (!firstName || !lastName || !email || !password) {
+        msg.textContent = "Please fill out all fields.";
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/user/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ firstName, lastName, email, password }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          msg.textContent = data.message || "Registration failed.";
           return;
         }
 
-        try {
-          const res = await fetch("http://localhost:8080/user/register", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ firstName, lastName, email, password }),
-          });
-
-          const data = await res.json();
-
-          if (res.ok) {
-            alert("✅ Account created successfully! Please check your email for verification.");
-            window.location.href = "signin.html";
-          } else {
-            alert(`❌ Error: ${data.message || "Unable to register."}`);
-          }
-        } catch (err) {
-          console.error("Error:", err);
-          alert("⚠️ Unable to connect to the server. Please try again later.");
-        }
-      });
+        msg.style.color = "#0f5132";
+        msg.textContent = "Registration successful! Redirecting to Sign In...";
+        setTimeout(() => {
+          window.location.href = "signin.html";
+        }, 1200);
+      } catch (err) {
+        console.error(err);
+        msg.textContent = "Server error. Please try again later.";
+      }
     });
   </script>
 </body>

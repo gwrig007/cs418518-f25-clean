@@ -7,72 +7,101 @@
   <link rel="stylesheet" href="style.css" />
   <style>
     body {
+      background: #fff;
+      color: #002855;
       font-family: "Segoe UI", Arial, sans-serif;
-      background: linear-gradient(135deg, #6fb1fc, #4364f7, #002ef7);
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
       margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
     }
     .container {
-      background: rgba(255, 255, 255, 0.15);
-      padding: 40px 30px;
-      border-radius: 12px;
-      backdrop-filter: blur(10px);
-      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
-      color: white;
-      width: 320px;
-      text-align: center;
+      width: 100%;
+      max-width: 420px;
+      background: #fff;
+      border-radius: 10px;
+      padding: 30px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.08);
     }
-    input, button {
+    h1 {
+      font-size: 1.5rem;
+      text-align: center;
+      color: #003366;
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin: 10px 0 6px;
+      font-weight: 600;
+    }
+    input {
       width: 100%;
       padding: 10px;
-      margin-bottom: 15px;
-      border-radius: 8px;
-      border: none;
-      outline: none;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 1rem;
     }
     button {
-      background-color: #007bff;
-      color: white;
-      font-size: 16px;
+      width: 100%;
+      margin-top: 18px;
+      background: #007bff;
+      border: none;
+      color: #fff;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 1rem;
       cursor: pointer;
-      transition: 0.3s ease;
+      transition: 0.2s;
     }
-    button:hover {
-      background-color: #0056b3;
+    button:hover { background: #0056b3; }
+    .link {
+      text-align: center;
+      margin-top: 12px;
     }
-    a {
-      color: #ffeb3b;
-      text-decoration: none;
-      font-size: 14px;
-    }
+    .link a { color: #007bff; text-decoration: none; }
+    .link a:hover { text-decoration: underline; }
+    .msg { text-align:center;margin-top:10px;color:#b11f24; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>Sign In</h2>
-    <form id="signinForm">
-      <input type="email" id="email" placeholder="Email" required />
-      <input type="password" id="password" placeholder="Password" required />
-      <button type="submit">Login</button>
+    <h1>Student Sign In</h1>
+
+    <label for="email">Email</label>
+    <input type="email" id="email" placeholder="example@email.com" />
+
+    <label for="password">Password</label>
+    <input type="password" id="password" placeholder="Enter password" />
+
+    <button id="signinBtn">Sign In</button>
+
+    <div class="link">
+      <a href="signup.html">Create Account</a> •
       <a href="forgot.html">Forgot Password?</a>
-    </form>
+    </div>
+
+    <div id="msg" class="msg"></div>
   </div>
 
   <script>
-    // ✅ Automatically detect API base URL
     const API_BASE =
-      window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-        ? "http://localhost:8080"
+      window.location.hostname.includes("localhost") || window.location.hostname.includes("127.0.0.1")
+        ? "http://127.0.0.1:8080"
         : "https://cs418518-f25-clean.onrender.com";
 
-    document.getElementById("signinForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
+    const btn = document.getElementById("signinBtn");
+    const msg = document.getElementById("msg");
 
+    btn.addEventListener("click", async () => {
+      msg.textContent = "";
       const email = document.getElementById("email").value.trim();
       const password = document.getElementById("password").value.trim();
+
+      if (!email || !password) {
+        msg.textContent = "Please enter both email and password.";
+        return;
+      }
 
       try {
         const res = await fetch(`${API_BASE}/user/login`, {
@@ -83,16 +112,22 @@
 
         const data = await res.json();
 
-        if (res.ok && data.status === 200) {
-          alert("OTP sent to your email!");
-          localStorage.setItem("pendingEmail", email);
-          window.location.href = "verify-otp.html";
-        } else {
-          alert(data.message || "Login failed.");
+        if (!res.ok) {
+          msg.textContent = data.message || "Login failed.";
+          return;
         }
+
+        localStorage.setItem("userEmail", email);
+        msg.style.color = "#0f5132";
+        msg.textContent = "OTP sent! Please verify.";
+
+        // redirect to OTP page
+        setTimeout(() => {
+          window.location.href = "verify-otp.html";
+        }, 1000);
       } catch (err) {
         console.error(err);
-        alert("Error connecting to server.");
+        msg.textContent = "Server error. Please try again later.";
       }
     });
   </script>
