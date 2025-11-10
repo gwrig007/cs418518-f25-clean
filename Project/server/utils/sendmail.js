@@ -25,4 +25,3 @@ export async function sendEmail(email, mailSubject, body) {
     return false;
   }
 }
-r
