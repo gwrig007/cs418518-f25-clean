@@ -1,16 +1,16 @@
 import { Router } from "express";
 import { pool } from "../database/connection.js";
-import nodemailer from "nodemailer";
 import bcrypt from "bcrypt";
+import nodemailer from "nodemailer";
 
 const user = Router();
 
-// ✉️ Email Transporter
+// ✉️ Email Transporter (Gmail)
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    user: process.env.SMTP_EMAIL,
+    pass: process.env.SMTP_PASSWORD,
   },
 });
 
@@ -18,9 +18,9 @@ const transporter = nodemailer.createTransport({
 user.post("/register", async (req, res) => {
   try {
     const { firstName, lastName, email, password } = req.body;
-    if (!firstName || !lastName || !email || !password) {
+
+    if (!firstName || !lastName || !email || !password)
       return res.status(400).json({ message: "All fields are required." });
-    }
 
     const [existing] = await pool.execute(
       "SELECT * FROM user_information WHERE u_email = ?",
@@ -32,14 +32,17 @@ user.post("/register", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     await pool.execute(
-      "INSERT INTO user_information (u_first_name, u_last_name, u_email, u_password, is_verified, is_admin) VALUES (?, ?, ?, ?, ?, ?)",
+      `INSERT INTO user_information 
+       (u_first_name, u_last_name, u_email, u_password, is_verified, is_admin) 
+       VALUES (?, ?, ?, ?, ?, ?)`,
       [firstName, lastName, email, hashedPassword, 1, 0]
     );
 
+    // Send welcome email
     await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+      from: process.env.SMTP_EMAIL,
       to: email,
-      subject: "Welcome! Your email has been verified 🎉",
+      subject: "Welcome to the ODU Course Advising Portal 🎉",
       html: `
         <p>Hi ${firstName},</p>
         <p>Your account has been successfully created and verified.</p>
@@ -50,7 +53,7 @@ user.post("/register", async (req, res) => {
 
     res.status(201).json({
       status: 201,
-      message: "User registered successfully and email verified.",
+      message: "User registered successfully and email sent.",
     });
   } catch (err) {
     console.error("Register error:", err);
@@ -81,8 +84,9 @@ user.post("/login", async (req, res) => {
       email,
     ]);
 
+    // Send OTP email
     await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+      from: process.env.SMTP_EMAIL,
       to: email,
       subject: "Your OTP Code - Course Advising Portal",
       html: `
@@ -146,7 +150,7 @@ user.post("/forgot-password", async (req, res) => {
     )}`;
 
     await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+      from: process.env.SMTP_EMAIL,
       to: email,
       subject: "Password Reset - Course Advising Portal",
       html: `
@@ -207,11 +211,14 @@ user.put("/update-profile", async (req, res) => {
     const { email, firstName, lastName, password } = req.body;
     if (!email) return res.status(400).json({ message: "Email is required." });
 
-    const hashed = await bcrypt.hash(password, 10);
+    const hashed = password ? await bcrypt.hash(password, 10) : null;
 
     const [result] = await pool.execute(
-      "UPDATE user_information SET u_first_name = ?, u_last_name = ?, u_password = ? WHERE u_email = ?",
-      [firstName, lastName, hashed, email]
+      `UPDATE user_information 
+       SET u_first_name = ?, u_last_name = ?, 
+           ${hashed ? "u_password = ?" : ""} 
+       WHERE u_email = ?`,
+      hashed ? [firstName, lastName, hashed, email] : [firstName, lastName, email]
     );
 
     if (result.affectedRows === 0)
@@ -225,3 +232,4 @@ user.put("/update-profile", async (req, res) => {
 });
 
 export default user;
+
