@@ -69,7 +69,7 @@
       const password = document.getElementById("password").value.trim();
 
       try {
-        const res = await fetch("http://127.0.0.1:8080/user/login", {
+        const res = await fetch("https://cs418518-f25-clean.onrender.com/user/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password }),
