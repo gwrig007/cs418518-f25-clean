@@ -1,175 +1,91 @@
-// server/route/advising.js
-import express from "express";
-import pool from "../config/db.js";
+const express = require("express");
+const router = express.Router();
+const pool = require("../db");
 
-const advising = express.Router();
-
-/* ===========================
-   GET /advising/summary?email=
-=========================== */
-advising.get("/summary", async (req, res) => {
+// ✅ Get advising summary
+router.get("/summary", async (req, res) => {
+  const { email } = req.query;
   try {
-    const { email } = req.query;
-    if (!email) return res.status(400).json({ message: "Email is required" });
-
-    const [[result]] = await pool.execute(
-      `SELECT 
-         u_email,
-         last_term,
-         last_gpa,
-         current_term,
-         status
-       FROM advising_records
-       WHERE u_email = ?
-       ORDER BY created_at DESC
-       LIMIT 1`,
+    const [summary] = await pool.query(
+      "SELECT * FROM advising_summary WHERE u_email = ? ORDER BY id DESC LIMIT 1",
       [email]
     );
-
-    if (!result) return res.json({});
-    res.json(result);
+    res.json(summary[0] || {});
   } catch (err) {
-    console.error("Summary error:", err);
-    res.status(500).json({ message: "Server error loading summary" });
+    console.error("Error fetching advising summary:", err);
+    res.status(500).json({ error: "Failed to fetch summary" });
   }
 });
 
-/* ===========================
-   GET /advising/current-courses?email=
-=========================== */
-advising.get("/current-courses", async (req, res) => {
+// ✅ Get last courses (from previous term)
+router.get("/last-courses", async (req, res) => {
+  const { email, term } = req.query;
   try {
-    const { email } = req.query;
-    if (!email) return res.status(400).json({ message: "Email is required" });
-
-    const [courses] = await pool.execute(
-      `SELECT course_name, course_level
-       FROM advising_courses ac
-       JOIN advising_records ar ON ac.record_id = ar.id
-       WHERE ar.u_email = ?
-       ORDER BY ac.course_name`,
-      [email]
-    );
-
-    res.json(courses);
-  } catch (err) {
-    console.error("Current courses error:", err);
-    res.status(500).json({ message: "Server error loading current courses" });
-  }
-});
-
-/* ===========================
-   GET /advising/last-courses?email=&term=
-=========================== */
-advising.get("/last-courses", async (req, res) => {
-  try {
-    const { email, term } = req.query;
-    if (!email || !term)
-      return res.status(400).json({ message: "Email and term are required" });
-
-    const [courses] = await pool.execute(
-      `SELECT course_name, grade
-       FROM taken_courses
-       WHERE u_email = ? AND term = ?`,
+    const [rows] = await pool.query(
+      "SELECT course_name, grade FROM advising_courses WHERE u_email = ? AND term = ?",
       [email, term]
     );
-
-    res.json(courses);
-  } catch (err) {
-    console.error("Last courses error:", err);
-    res.status(500).json({ message: "Server error loading last courses" });
-  }
-});
-
-/* ===========================
-   GET /advising/history?email=
-=========================== */
-advising.get("/history", async (req, res) => {
-  try {
-    const { email } = req.query;
-    if (!email) return res.status(400).json({ message: "Email is required" });
-
-    const [rows] = await pool.execute(
-      `SELECT 
-         ar.id,
-         DATE_FORMAT(ar.created_at, '%m/%d/%Y') AS date,
-         ar.current_term AS term,
-         ar.status,
-         GROUP_CONCAT(ac.course_name ORDER BY ac.course_name SEPARATOR ', ') AS courses
-       FROM advising_records ar
-       LEFT JOIN advising_courses ac ON ar.id = ac.record_id
-       WHERE ar.u_email = ?
-       GROUP BY ar.id
-       ORDER BY ar.created_at DESC`,
-      [email]
-    );
-
     res.json(rows);
   } catch (err) {
-    console.error("History error:", err);
-    res.status(500).json({ message: "Server error loading history" });
+    console.error("Error fetching last courses:", err);
+    res.status(500).json({ error: "Failed to fetch last courses" });
   }
 });
 
-/* ===========================
-   POST /advising/submit
-=========================== */
-advising.post("/submit", async (req, res) => {
-  const { email, lastTerm, lastGpa, currentTerm, courses } = req.body;
-  if (!email || !currentTerm)
-    return res.status(400).json({ message: "Missing required fields" });
-
-  const conn = await pool.getConnection();
+// ✅ Get current courses
+router.get("/current-courses", async (req, res) => {
+  const { email } = req.query;
   try {
-    await conn.beginTransaction();
-
-    const [result] = await conn.execute(
-      `INSERT INTO advising_records (u_email, last_term, last_gpa, current_term, status)
-       VALUES (?, ?, ?, ?, 'Pending')`,
-      [email, lastTerm, lastGpa, currentTerm]
+    const [rows] = await pool.query(
+      "SELECT course_name, course_level FROM advising_courses WHERE u_email = ? AND term = 'Current'",
+      [email]
     );
-    const recordId = result.insertId;
+    res.json(rows);
+  } catch (err) {
+    console.error("Error fetching current courses:", err);
+    res.status(500).json({ error: "Failed to fetch current courses" });
+  }
+});
 
-    for (const c of courses) {
-      await conn.execute(
-        `INSERT INTO advising_courses (record_id, course_name, course_level)
-         VALUES (?, ?, ?)`,
-        [recordId, c.name, c.level]
-      );
+// ✅ Add a new class (only if not already taken)
+router.post("/add-course", async (req, res) => {
+  const { email, course_name, course_level, term } = req.body;
+  try {
+    // check if already exists
+    const [exists] = await pool.query(
+      "SELECT * FROM advising_courses WHERE u_email = ? AND course_name = ?",
+      [email, course_name]
+    );
+
+    if (exists.length > 0) {
+      return res.status(400).json({ message: "Class already taken or added." });
     }
 
-    await conn.commit();
-    res.json({ message: "Advising record submitted successfully" });
+    await pool.query(
+      "INSERT INTO advising_courses (u_email, course_name, course_level, term) VALUES (?, ?, ?, ?)",
+      [email, course_name, course_level, term || "Current"]
+    );
+
+    res.json({ message: "Class added successfully." });
   } catch (err) {
-    await conn.rollback();
-    console.error("Submit error:", err);
-    res.status(500).json({ message: "Server error submitting record" });
-  } finally {
-    conn.release();
+    console.error("Error adding new class:", err);
+    res.status(500).json({ error: "Failed to add class." });
   }
 });
 
-/* ===========================
-   POST /advising/sync-approved
-   Auto-sync approved advising → taken_courses
-=========================== */
-advising.post("/sync-approved", async (req, res) => {
+// ✅ Get advising history
+router.get("/history", async (req, res) => {
+  const { email } = req.query;
   try {
-    const [result] = await pool.execute(`
-      INSERT INTO taken_courses (u_email, term, course_name)
-      SELECT ar.u_email, ar.current_term, ac.course_name
-      FROM advising_records ar
-      JOIN advising_courses ac ON ar.id = ac.record_id
-      WHERE ar.status = 'Approved'
-      AND (ar.u_email, ar.current_term, ac.course_name) 
-          NOT IN (SELECT u_email, term, course_name FROM taken_courses)
-    `);
-
-    res.json({ message: `Synced ${result.affectedRows} approved courses.` });
+    const [rows] = await pool.query(
+      "SELECT id, term, date, status, GROUP_CONCAT(course_name SEPARATOR ', ') AS courses FROM advising_courses WHERE u_email = ? GROUP BY term, date, status ORDER BY date DESC",
+      [email]
+    );
+    res.json(rows);
   } catch (err) {
-    console.error("Sync error:", err);
-    res.status(500).json({ message: "Error syncing approved records" });
+    console.error("Error fetching advising history:", err);
+    res.status(500).json({ error: "Failed to fetch advising history" });
   }
 });
 
-export default advising;
+module.exports = router;

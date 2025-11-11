@@ -3,146 +3,138 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Advising | ODU Course Portal</title>
+  <title>Advising Classes | ODU Course Advising Portal</title>
   <link rel="stylesheet" href="../style.css" />
-  <style>
-    body {
-      font-family: "Segoe UI", Arial, sans-serif;
-      background-color: #f5f7fa;
-      color: #333;
-      margin: 0;
-      padding: 0;
-    }
-    h2 {
-      color: #00457c;
-      border-bottom: 2px solid #00457c;
-      padding-bottom: 4px;
-    }
-    .container {
-      max-width: 1000px;
-      margin: 30px auto;
-      background: #fff;
-      padding: 20px 40px;
-      border-radius: 10px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 15px;
-    }
-    th, td {
-      padding: 10px;
-      border-bottom: 1px solid #ccc;
-      text-align: left;
-    }
-    th {
-      background-color: #00457c;
-      color: #fff;
-    }
-    tr:hover {
-      background-color: #f1f5fb;
-      cursor: pointer;
-    }
-    .status-pending { color: orange; }
-    .status-approved { color: green; }
-    .status-rejected { color: red; }
-  </style>
 </head>
 <body>
-  <div class="container">
-    <h2>Advising Summary</h2>
-    <div id="summary"></div>
+  <header>
+    <h1>Course Advising Overview</h1>
+  </header>
 
-    <h2>Last Term Courses</h2>
-    <table id="lastCourses">
-      <thead><tr><th>Course</th><th>Grade</th></tr></thead>
-      <tbody></tbody>
-    </table>
+  <main>
+    <section id="summary"></section>
 
-    <h2>Current Courses</h2>
-    <table id="currentCourses">
-      <thead><tr><th>Course</th><th>Level</th></tr></thead>
-      <tbody></tbody>
-    </table>
+    <section>
+      <h2>Previously Taken Courses</h2>
+      <table id="lastCourses">
+        <thead>
+          <tr><th>Course</th><th>Grade</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
 
-    <h2>Advising History</h2>
-    <table id="history">
-      <thead><tr><th>Date</th><th>Term</th><th>Status</th><th>Courses</th></tr></thead>
-      <tbody></tbody>
-    </table>
-  </div>
+    <section>
+      <h2>Current Courses</h2>
+      <table id="currentCourses">
+        <thead>
+          <tr><th>Course</th><th>Level</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Add New Course</h2>
+      <form id="addCourseForm">
+        <input type="text" id="courseName" placeholder="Course Name" required />
+        <input type="text" id="courseLevel" placeholder="Course Level" required />
+        <button type="submit">Add</button>
+      </form>
+      <p id="message"></p>
+    </section>
+
+    <section>
+      <h2>Advising History</h2>
+      <table id="history">
+        <thead>
+          <tr><th>Date</th><th>Term</th><th>Status</th><th>Courses</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </main>
 
   <script>
-  const email = localStorage.getItem("email");
+    const email = localStorage.getItem("email");
 
-  async function loadSummary() {
-    const res = await fetch(`/advising/summary?email=${email}`);
-    const data = await res.json();
-    const div = document.getElementById("summary");
-    if (!data.u_email) {
-      div.textContent = "No advising record found.";
-      return;
-    }
-    div.innerHTML = `
-      <p><b>Last Term:</b> ${data.last_term || "N/A"}</p>
-      <p><b>Last GPA:</b> ${data.last_gpa || "N/A"}</p>
-      <p><b>Current Term:</b> ${data.current_term || "N/A"}</p>
-      <p><b>Status:</b> <span class="status-${data.status?.toLowerCase() || "pending"}">${data.status || "Pending"}</span></p>
-    `;
-    loadLastCourses(data.last_term);
-    loadCurrentCourses();
-    loadHistory();
-  }
-
-  async function loadLastCourses(term) {
-    if (!term) return;
-    const res = await fetch(`/advising/last-courses?email=${email}&term=${encodeURIComponent(term)}`);
-    const courses = await res.json();
-    const body = document.querySelector("#lastCourses tbody");
-    body.innerHTML = "";
-    courses.forEach(c => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `<td>${c.course_name}</td><td>${c.grade || "—"}</td>`;
-      body.appendChild(tr);
-    });
-  }
-
-  async function loadCurrentCourses() {
-    const res = await fetch(`/advising/current-courses?email=${email}`);
-    const courses = await res.json();
-    const body = document.querySelector("#currentCourses tbody");
-    body.innerHTML = "";
-    courses.forEach(c => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `<td>${c.course_name}</td><td>${c.course_level || ""}</td>`;
-      body.appendChild(tr);
-    });
-  }
-
-  async function loadHistory() {
-    const res = await fetch(`/advising/history?email=${email}`);
-    const records = await res.json();
-    const body = document.querySelector("#history tbody");
-    body.innerHTML = "";
-    records.forEach(r => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${r.date}</td>
-        <td>${r.term || ""}</td>
-        <td class="status-${r.status?.toLowerCase()}">${r.status}</td>
-        <td>${r.courses || "—"}</td>
+    async function loadSummary() {
+      const res = await fetch(`/advising/summary?email=${email}`);
+      const data = await res.json();
+      const div = document.getElementById("summary");
+      if (!data.u_email) {
+        div.textContent = "No advising record found.";
+        return;
+      }
+      div.innerHTML = `
+        <p><b>Last Term:</b> ${data.last_term || "N/A"}</p>
+        <p><b>Last GPA:</b> ${data.last_gpa || "N/A"}</p>
+        <p><b>Current Term:</b> ${data.current_term || "N/A"}</p>
+        <p><b>Status:</b> ${data.status || "Pending"}</p>
       `;
-      tr.addEventListener("click", () => {
-        window.location.href = `advising-form.html?id=${r.id}`;
+      loadLastCourses(data.last_term);
+      loadCurrentCourses();
+      loadHistory();
+    }
+
+    async function loadLastCourses(term) {
+      if (!term) return;
+      const res = await fetch(`/advising/last-courses?email=${email}&term=${encodeURIComponent(term)}`);
+      const courses = await res.json();
+      const body = document.querySelector("#lastCourses tbody");
+      body.innerHTML = "";
+      courses.forEach(c => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${c.course_name}</td><td>${c.grade || "—"}</td>`;
+        body.appendChild(tr);
       });
-      body.appendChild(tr);
+    }
+
+    async function loadCurrentCourses() {
+      const res = await fetch(`/advising/current-courses?email=${email}`);
+      const courses = await res.json();
+      const body = document.querySelector("#currentCourses tbody");
+      body.innerHTML = "";
+      courses.forEach(c => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${c.course_name}</td><td>${c.course_level || ""}</td>`;
+        body.appendChild(tr);
+      });
+    }
+
+    async function loadHistory() {
+      const res = await fetch(`/advising/history?email=${email}`);
+      const records = await res.json();
+      const body = document.querySelector("#history tbody");
+      body.innerHTML = "";
+      records.forEach(r => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${r.date || "—"}</td>
+          <td>${r.term || ""}</td>
+          <td>${r.status || ""}</td>
+          <td>${r.courses || "—"}</td>
+        `;
+        body.appendChild(tr);
+      });
+    }
+
+    document.getElementById("addCourseForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const course_name = document.getElementById("courseName").value;
+      const course_level = document.getElementById("courseLevel").value;
+      const res = await fetch("/advising/add-course", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, course_name, course_level })
+      });
+      const data = await res.json();
+      document.getElementById("message").textContent = data.message || data.error;
+      loadCurrentCourses();
+      loadHistory();
     });
-  }
 
-  loadSummary();
-</script>
-
-
+    loadSummary();
+  </script>
 </body>
 </html>
