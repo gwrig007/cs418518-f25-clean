@@ -164,43 +164,34 @@
   });
 
   async function loadCurrentCourses() {
-    messageEl.textContent = "";
-    tableBody.innerHTML = "<tr><td colspan='4'>Loading...</td></tr>";
+  messageEl.textContent = "";
+  tableBody.innerHTML = "<tr><td colspan='4'>Loading...</td></tr>";
 
-    try {
-      const res = await fetch(`${API_BASE}/advising/list?email=${encodeURIComponent(email)}`);
-      if (!res.ok) throw new Error("Unable to fetch courses.");
-      const courses = await res.json();
+  try {
+    const res = await fetch(`${API_BASE}/advising/history?email=${encodeURIComponent(email)}`);
+    if (!res.ok) throw new Error("Unable to fetch courses.");
+    const records = await res.json();
 
-      if (!Array.isArray(courses) || courses.length === 0) {
-        tableBody.innerHTML = "<tr><td colspan='4'>No advising records found.</td></tr>";
-        return;
-      }
-
-      tableBody.innerHTML = "";
-      courses.forEach(r => {
-        const row = document.createElement("tr");
-        row.innerHTML = `
-          <td>${r.current_term || "—"}</td>
-          <td>${r.last_gpa ?? "—"}</td>
-          <td>${r.status || "Pending"}</td>
-          <td>
-            <button class="btn secondary" onclick="openForm('${r.id}')">View/Edit</button>
-          </td>
-        `;
-        tableBody.appendChild(row);
-      });
-    } catch (err) {
-      console.error("Error loading courses:", err);
-      messageEl.textContent = "Failed to load your advising records.";
+    if (!Array.isArray(records) || records.length === 0) {
+      tableBody.innerHTML = "<tr><td colspan='4'>No advising records found.</td></tr>";
+      return;
     }
-  }
 
-  function openForm(id) {
-    window.location.href = `advisingform.html?id=${id}&email=${encodeURIComponent(email)}`;
+    tableBody.innerHTML = "";
+    records.forEach(r => {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${r.term || "—"}</td>
+        <td>${r.gpa ?? "—"}</td>
+        <td>${r.status || "Pending"}</td>
+        <td>
+          <button class="btn secondary" onclick="openForm('${r.id}')">View/Edit</button>
+        </td>
+      `;
+      tableBody.appendChild(row);
+    });
+  } catch (err) {
+    console.error("Error loading courses:", err);
+    messageEl.textContent = "Failed to load your advising records.";
   }
-
-  loadCurrentCourses();
-</script>
-</body>
-</html>
+}

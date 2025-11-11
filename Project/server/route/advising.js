@@ -137,4 +137,30 @@ router.post("/add-course", async (req, res) => {
   }
 });
 
+/* ===========================
+   GET /advising/list?email=
+   Alias route for current courses (for backward compatibility)
+=========================== */
+router.get("/list", async (req, res) => {
+  try {
+    const { email } = req.query;
+    if (!email) return res.status(400).json({ message: "Email is required" });
+
+    const [rows] = await pool.execute(
+      `SELECT course_name, course_level 
+       FROM advising_courses ac
+       JOIN advising_records ar ON ac.record_id = ar.id
+       WHERE ar.u_email = ?
+       ORDER BY course_name ASC`,
+      [email]
+    );
+
+    res.json(rows);
+  } catch (err) {
+    console.error("List error:", err);
+    res.status(500).json({ message: "Server error fetching advising list" });
+  }
+});
+
+
 export default router;
