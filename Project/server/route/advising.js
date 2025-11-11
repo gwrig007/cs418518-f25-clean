@@ -14,9 +14,7 @@ advising.get("/history", async (req, res) => {
 
     const [rows] = await pool.execute(
       `SELECT id, DATE_FORMAT(created_at, '%m/%d/%Y') AS date, current_term AS term, status
-       FROM advising_records 
-       WHERE u_email = ? 
-       ORDER BY created_at DESC`,
+       FROM advising_records WHERE u_email = ? ORDER BY created_at DESC`,
       [email]
     );
 
@@ -28,83 +26,67 @@ advising.get("/history", async (req, res) => {
 });
 
 /* ===========================
-   GET /advising/current-courses?email=
-=========================== */
-advising.get("/current-courses", async (req, res) => {
-  try {
-    const { email } = req.query;
-    if (!email) return res.status(400).json({ message: "Email is required" });
-
-    const [rows] = await pool.execute(
-      `SELECT course_name, term 
-       FROM taken_courses 
-       WHERE u_email = ? 
-       ORDER BY term DESC, course_name ASC`,
-      [email]
-    );
-
-    res.json(rows);
-  } catch (err) {
-    console.error("Current courses error:", err);
-    res.status(500).json({ message: "Server error fetching current courses" });
-  }
-});
-
-/* ===========================
-   GET /advising/last-courses?email=&term=
-=========================== */
-advising.get("/last-courses", async (req, res) => {
-  try {
-    const { email, term } = req.query;
-    if (!email) return res.status(400).json({ message: "Email required" });
-
-    let finalTerm = term;
-
-    if (!finalTerm) {
-      const [latest] = await pool.execute(
-        "SELECT term FROM taken_courses WHERE u_email = ? ORDER BY id DESC LIMIT 1",
-        [email]
-      );
-      if (latest.length > 0) finalTerm = latest[0].term;
-    }
-
-    if (!finalTerm) return res.json([]);
-
-    const [rows] = await pool.execute(
-      "SELECT course_name FROM taken_courses WHERE u_email = ? AND term = ?",
-      [email, finalTerm]
-    );
-
-    res.json(rows.map((r) => r.course_name));
-  } catch (err) {
-    console.error("Last courses error:", err);
-    res.status(500).json({ message: "Error loading last courses" });
-  }
-});
-
-/* ===========================
-   ✅ NEW: GET /advising/summary?email=
-   Returns latest GPA & term summary
+   ✅ GET /advising/summary?email=
+   Academic summary (GPA, last term, total courses)
 =========================== */
 advising.get("/summary", async (req, res) => {
   try {
     const { email } = req.query;
-    if (!email) return res.status(400).json({ message: "Email is required" });
+    if (!email) return res.status(400).json({ message: "Email required" });
 
-    const [rows] = await pool.execute(
-      `SELECT last_term, last_gpa, current_term, DATE_FORMAT(created_at, '%m/%d/%Y') AS created
+    const [[stats]] = await pool.execute(
+      `SELECT 
+          MAX(term) AS last_term,
+          ROUND(AVG(last_gpa), 2) AS avg_gpa,
+          COUNT(*) AS advising_count
        FROM advising_records
-       WHERE u_email = ?
-       ORDER BY created_at DESC
-       LIMIT 1`,
+       WHERE u_email = ?`,
       [email]
     );
 
-    if (rows.length === 0) return res.json({});
-    res.json(rows[0]);
+    const [[totalCourses]] = await pool.execute(
+      "SELECT COUNT(*) AS total_courses FROM taken_courses WHERE u_email = ?",
+      [email]
+    );
+
+    res.json({
+      last_term: stats?.last_term || "N/A",
+      avg_gpa: stats?.avg_gpa || 0,
+      advising_count: stats?.advising_count || 0,
+      total_courses: totalCourses?.total_courses || 0,
+    });
   } catch (err) {
     console.error("Summary error:", err);
-    res.status(500).json({ message: "Server error fetching summary" });
+    res.status(500).json({ message: "Error loading academic summary" });
+  }
+});
+
+/* ===========================
+   GET /advising/current-courses?email=
+   Returns most recent term’s courses for this student
+=========================== */
+advising.get("/current-courses", async (req, res) => {
+  try {
+    const { email } = req.query;
+    if (!email) return res.status(400).json({ message: "Email required" });
+
+    // Find latest term first
+    const [[latest]] = await pool.execute(
+      "SELECT term FROM taken_courses WHERE u_email = ? ORDER BY id DESC LIMIT 1",
+      [email]
+    );
+
+    if (!latest) return res.json([]);
+
+    const [rows] = await pool.execute(
+      "SELECT course_name FROM taken_courses WHERE u_email = ? AND term = ?",
+      [email, latest.term]
+    );
+
+    res.json(rows.map((r) => r.course_name));
+  } catch (err) {
+    console.error("Current courses error:", err);
+    res.status(500).json({ message: "Error loading current courses" });
   }
 });
 
@@ -170,48 +152,6 @@ advising.post("/create", async (req, res) => {
     await conn.rollback();
     console.error("Create advising error:", err);
     res.status(500).json({ message: "Server error creating advising record" });
-  } finally {
-    conn.release();
-  }
-});
-
-/* ===========================
-   PUT /advising/update/:id
-=========================== */
-advising.put("/update/:id", async (req, res) => {
-  const { email, last_term, last_gpa, current_term, courses } = req.body;
-  const { id } = req.params;
-  const conn = await pool.getConnection();
-  try {
-    await conn.beginTransaction();
-
-    await conn.execute(
-      `UPDATE advising_records 
-       SET last_term=?, last_gpa=?, current_term=?, status='Pending'
-       WHERE id=? AND u_email=?`,
-      [last_term, last_gpa, current_term, id, email]
-    );
-
-    await conn.execute("DELETE FROM advising_courses WHERE record_id=?", [id]);
-    for (const c of courses || []) {
-      const [taken] = await conn.execute(
-        "SELECT id FROM taken_courses WHERE u_email = ? AND term = ? AND course_name = ?",
-        [email, last_term, c.name]
-      );
-      if (taken.length === 0) {
-        await conn.execute(
-          "INSERT INTO advising_courses (record_id, course_level, course_name) VALUES (?, ?, ?)",
-          [id, c.level, c.name]
-        );
-      }
-    }
-
-    await conn.commit();
-    res.json({ message: "Advising record updated successfully" });
-  } catch (err) {
-    await conn.rollback();
-    console.error("Update advising error:", err);
-    res.status(500).json({ message: "Server error updating record" });
   } finally {
     conn.release();
   }

@@ -172,29 +172,48 @@
       }
     }
 
-    async function loadCurrentCourses() {
-      try {
-        const res = await fetch(`${API_BASE}/advising/last-courses?email=${encodeURIComponent(email)}&term=Current`);
-        const courses = await res.json();
-        const list = document.getElementById("courseList");
-        const none = document.getElementById("noCourses");
-        list.innerHTML = "";
-        if (!courses || courses.length === 0) {
-          none.style.display = "block";
-          return;
-        }
-        none.style.display = "none";
-        courses.forEach(c => {
-          const tag = document.createElement("div");
-          tag.className = "course-tag";
-          tag.textContent = c.course_name || c;
-          list.appendChild(tag);
-        });
-      } catch (err) {
-        console.error("Error loading current courses:", err);
-        document.getElementById("noCourses").style.display = "block";
-      }
+    async function loadSummary() {
+  try {
+    const res = await fetch(`${API_BASE}/advising/summary?email=${encodeURIComponent(email)}`);
+    if (!res.ok) throw new Error("Failed to load summary");
+    const data = await res.json();
+
+    console.log("Academic Summary:", data);
+    // Optional: display this info on page later
+  } catch (err) {
+    console.error("Error loading summary:", err);
+  }
+}
+
+
+   async function loadCurrentCourses() {
+  try {
+    const res = await fetch(`${API_BASE}/advising/current-courses?email=${encodeURIComponent(email)}`);
+    if (!res.ok) throw new Error("Failed to load current courses");
+    const courses = await res.json();
+
+    const list = document.getElementById("courseList");
+    const none = document.getElementById("noCourses");
+
+    list.innerHTML = "";
+    if (!Array.isArray(courses) || courses.length === 0) {
+      none.style.display = "block";
+      return;
     }
+
+    none.style.display = "none";
+    courses.forEach((course) => {
+      const tag = document.createElement("div");
+      tag.className = "course-tag";
+      tag.textContent = course;
+      list.appendChild(tag);
+    });
+  } catch (err) {
+    console.error("Error loading current courses:", err);
+    document.getElementById("noCourses").style.display = "block";
+  }
+}
+
 
     async function loadHistory() {
       try {
@@ -254,9 +273,10 @@
       window.location.href = "signin.html";
     });
 
-    loadSummary();
-    loadCurrentCourses();
     loadHistory();
+    loadCurrentCourses();
+    loadSummary();
+
   </script>
 </body>
 </html>
