@@ -8,18 +8,22 @@ import advising from "./route/advising.js";
 const app = express(); // ✅ define app first
 const PORT = process.env.PORT || 8080;
 
-// ✅ Enable CORS first
 app.use(
   cors({
     origin: [
       "http://127.0.0.1:5500",
       "http://localhost:5173",
-      "https://oduadvisingportal.netlify.app", // your Netlify site
+      "https://oduadvisingportal.netlify.app",
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true, // ✅ important if using cookies or auth
   })
 );
+
+// ✅ Also explicitly handle OPTIONS preflight requests
+app.options("*", cors());
+
 
 // ✅ Body parser
 app.use(bodyParser.json());
