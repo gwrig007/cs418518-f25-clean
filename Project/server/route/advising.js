@@ -6,13 +6,12 @@ const pool = require("../db");
 router.get("/forms", async (req, res) => {
   try {
     const { email } = req.query;
-
     if (!email) {
       return res.status(400).json({ error: "Missing email parameter" });
     }
 
     const [rows] = await pool.query(
-      "SELECT id, current_term, last_gpa, status, created_at FROM advising_forms WHERE email = ? ORDER BY created_at DESC",
+      "SELECT id, current_term, last_gpa, status, created_at FROM advising WHERE email = ? ORDER BY created_at DESC",
       [email]
     );
 
@@ -23,11 +22,11 @@ router.get("/forms", async (req, res) => {
   }
 });
 
-// ✅ Get a single advising form by ID (for editing)
+// ✅ Get a single advising form by ID
 router.get("/form/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const [rows] = await pool.query("SELECT * FROM advising_forms WHERE id = ?", [id]);
+    const [rows] = await pool.query("SELECT * FROM advising WHERE id = ?", [id]);
 
     if (rows.length === 0) {
       return res.status(404).json({ error: "Advising form not found" });
@@ -40,7 +39,7 @@ router.get("/form/:id", async (req, res) => {
   }
 });
 
-// ✅ Create a new advising form
+// ✅ Create new advising form
 router.post("/form", async (req, res) => {
   try {
     const { email, current_term, last_gpa, status } = req.body;
@@ -50,7 +49,7 @@ router.post("/form", async (req, res) => {
     }
 
     const [result] = await pool.query(
-      "INSERT INTO advising_forms (email, current_term, last_gpa, status, created_at) VALUES (?, ?, ?, ?, NOW())",
+      "INSERT INTO advising (email, current_term, last_gpa, status, created_at) VALUES (?, ?, ?, ?, NOW())",
       [email, current_term, last_gpa || null, status || "Pending"]
     );
 
@@ -61,14 +60,14 @@ router.post("/form", async (req, res) => {
   }
 });
 
-// ✅ Update an advising form
+// ✅ Update existing advising form
 router.put("/form/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const { current_term, last_gpa, status } = req.body;
 
     const [result] = await pool.query(
-      "UPDATE advising_forms SET current_term = ?, last_gpa = ?, status = ? WHERE id = ?",
+      "UPDATE advising SET current_term = ?, last_gpa = ?, status = ? WHERE id = ?",
       [current_term, last_gpa, status, id]
     );
 
