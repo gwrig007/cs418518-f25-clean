@@ -162,5 +162,29 @@ router.get("/list", async (req, res) => {
   }
 });
 
+/* ===========================
+   GET /advising/forms?email=
+   Returns all advising forms (records) for the student
+=========================== */
+router.get("/forms", async (req, res) => {
+  try {
+    const { email } = req.query;
+    if (!email) return res.status(400).json({ message: "Email is required" });
+
+    const [rows] = await pool.execute(
+      `SELECT id, current_term, last_gpa, status
+       FROM advising_records
+       WHERE u_email = ?
+       ORDER BY created_at DESC`,
+      [email]
+    );
+
+    res.json(rows);
+  } catch (err) {
+    console.error("Forms fetch error:", err);
+    res.status(500).json({ message: "Error fetching advising forms" });
+  }
+});
+
 
 export default router;
