@@ -6,7 +6,7 @@ import user from "./route/user.js";
 import advising from "./route/advising.js";
 
 const app = express(); // ✅ define app first
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 10000;
 
 app.use(
   cors({
