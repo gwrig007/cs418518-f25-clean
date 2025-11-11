@@ -1,181 +1,206 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Advising Classes | ODU Course Advising Portal</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>My Classes | ODU Portal</title>
   <link rel="stylesheet" href="style.css" />
+  <style>
+    :root {
+      --odu-navy: #003366;
+      --odu-blue: #00539B;
+      --light-gray: #f4f6fa;
+    }
+
+    body {
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: var(--light-gray);
+      color: var(--odu-navy);
+      margin: 0;
+      padding: 24px;
+    }
+
+    .wrap {
+      max-width: 1000px;
+      margin: 24px auto;
+      background: #fff;
+      padding: 20px 28px;
+      border-radius: 10px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+      border: 1px solid #e0e6f0;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 12px;
+      color: var(--odu-navy);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    th, td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid #e0e6f0;
+    }
+
+    th {
+      background: var(--odu-blue);
+      color: white;
+      font-weight: 600;
+    }
+
+    .btn {
+      background: var(--odu-blue);
+      color: white;
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s;
+      font-weight: 500;
+    }
+
+    .btn:hover { background: #004080; }
+
+    .btn.secondary {
+      background: #6c757d;
+    }
+
+    .btn.secondary:hover {
+      background: #5a6268;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .msg {
+      color: #a30000;
+      font-weight: 500;
+      margin-top: 10px;
+    }
+
+    .logout {
+      color: #a30000;
+      text-decoration: underline;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+  </style>
 </head>
 <body>
-  <header>
-    <h1>Course Advising Overview</h1>
-  </header>
+  <div class="wrap">
+    <div class="header">
+      <h1>My Course Advising</h1>
+      <div>
+        <button id="newFormBtn" class="btn">+ New Advising Form</button>
+        <span id="logoutBtn" class="logout">Logout</span>
+      </div>
+    </div>
 
-  <main>
-    <section id="summary"></section>
+    <table id="classesTable">
+      <thead>
+        <tr>
+          <th>Term</th>
+          <th>GPA</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
 
-    <section>
-      <h2>Previously Taken Courses</h2>
-      <table id="lastCourses">
-        <thead>
-          <tr><th>Course</th><th>Grade</th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </section>
+    <div id="message" class="msg"></div>
+  </div>
 
-    <section>
-      <h2>Current Courses</h2>
-      <table id="currentCourses">
-        <thead>
-          <tr><th>Course</th><th>Level</th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </section>
+<script>
+  const API_BASE =
+    window.location.hostname.includes("127.0.0.1") || window.location.hostname.includes("localhost")
+      ? "http://127.0.0.1:8080"
+      : "https://cs418518-f25-clean.onrender.com";
 
-    <section>
-      <h2>Add New Course</h2>
-      <form id="addCourseForm">
-        <input type="text" id="courseName" placeholder="Course Name" required />
-        <input type="text" id="courseLevel" placeholder="Course Level" required />
-        <button type="submit">Add</button>
-      </form>
-      <p id="message"></p>
-    </section>
+  // ✅ Ensure email is consistent
+  let email = localStorage.getItem("userEmail");
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlEmail = urlParams.get("email");
 
-    <section>
-      <h2>Advising History</h2>
-      <table id="history">
-        <thead>
-          <tr><th>Date</th><th>Term</th><th>Status</th><th>Courses</th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </section>
-  </main>
+  if (urlEmail && urlEmail !== email) {
+    localStorage.setItem("userEmail", urlEmail);
+    email = urlEmail;
+  }
 
-  <script>
-    // ✅ Try all possible email keys
-    let email =
-      localStorage.getItem("email") ||
-      localStorage.getItem("pendingEmail") ||
-      localStorage.getItem("user_email") ||
-      localStorage.getItem("u_email");
+  if (!email || email === "null" || email.trim() === "") {
+    alert("Please sign in again.");
+    window.location.href = "signin.html";
+  }
 
-    if (!email) {
-      alert("No email found. Please sign in again.");
-      window.location.href = "signin.html";
-    }
+  // Push email into the URL for all subsequent actions
+  if (!urlEmail) {
+    const newUrl = `${window.location.pathname}?email=${encodeURIComponent(email)}`;
+    history.replaceState({}, "", newUrl);
+  }
 
-    // ✅ Automatically detect backend (Render) base URL
-    const baseURL =
-      window.location.hostname.includes("netlify.app") ||
-      window.location.hostname.includes("vercel.app")
-        ? "https://cs418518-f25-clean.onrender.com"
-        : "";
+  const tableBody = document.getElementById("tableBody");
+  const messageEl = document.getElementById("message");
+  const newFormBtn = document.getElementById("newFormBtn");
+  const logoutBtn = document.getElementById("logoutBtn");
 
-    // ✅ Helper for safer fetches
-    async function safeFetchJSON(endpoint, options = {}) {
-      try {
-        const url = `${baseURL}${endpoint}`;
-        const res = await fetch(url, options);
-        if (!res.ok) {
-          console.error(`Fetch failed (${res.status}): ${url}`);
-          return [];
-        }
-        return await res.json();
-      } catch (err) {
-        console.error("Fetch error:", err);
-        return [];
-      }
-    }
+  logoutBtn.addEventListener("click", () => {
+    localStorage.removeItem("userEmail");
+    window.location.href = "signin.html";
+  });
 
-    // ✅ Load student summary
-    async function loadSummary() {
-      const data = await safeFetchJSON(`/advising/summary?email=${encodeURIComponent(email)}`);
-      const div = document.getElementById("summary");
+  newFormBtn.addEventListener("click", () => {
+    window.location.href = `advisingform.html?email=${encodeURIComponent(email)}`;
+  });
 
-      if (!data || !data.u_email) {
-        div.textContent = "No advising record found.";
+  async function loadCurrentCourses() {
+    messageEl.textContent = "";
+    tableBody.innerHTML = "<tr><td colspan='4'>Loading...</td></tr>";
+
+    try {
+      const res = await fetch(`${API_BASE}/advising/list?email=${encodeURIComponent(email)}`);
+      if (!res.ok) throw new Error("Unable to fetch courses.");
+      const courses = await res.json();
+
+      if (!Array.isArray(courses) || courses.length === 0) {
+        tableBody.innerHTML = "<tr><td colspan='4'>No advising records found.</td></tr>";
         return;
       }
 
-      div.innerHTML = `
-        <p><b>Last Term:</b> ${data.last_term || "N/A"}</p>
-        <p><b>Last GPA:</b> ${data.last_gpa || "N/A"}</p>
-        <p><b>Current Term:</b> ${data.current_term || "N/A"}</p>
-        <p><b>Status:</b> ${data.status || "Pending"}</p>
-      `;
-
-      await loadLastCourses(data.last_term);
-      await loadCurrentCourses();
-      await loadHistory();
-    }
-
-    // ✅ Previously taken courses
-    async function loadLastCourses(term) {
-      if (!term) return;
-      const courses = await safeFetchJSON(`/advising/last-courses?email=${encodeURIComponent(email)}&term=${encodeURIComponent(term)}`);
-      const body = document.querySelector("#lastCourses tbody");
-      body.innerHTML = "";
-      courses.forEach(c => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${c.course_name}</td><td>${c.grade || "—"}</td>`;
-        body.appendChild(tr);
-      });
-    }
-
-    // ✅ Current courses
-    async function loadCurrentCourses() {
-      const courses = await safeFetchJSON(`/advising/current-courses?email=${encodeURIComponent(email)}`);
-      const body = document.querySelector("#currentCourses tbody");
-      body.innerHTML = "";
-      courses.forEach(c => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${c.course_name}</td><td>${c.course_level || ""}</td>`;
-        body.appendChild(tr);
-      });
-    }
-
-    // ✅ Advising history
-    async function loadHistory() {
-      const records = await safeFetchJSON(`/advising/history?email=${encodeURIComponent(email)}`);
-      const body = document.querySelector("#history tbody");
-      body.innerHTML = "";
-      records.forEach(r => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${r.date || "—"}</td>
-          <td>${r.term || ""}</td>
-          <td>${r.status || ""}</td>
-          <td>${r.courses || "—"}</td>
+      tableBody.innerHTML = "";
+      courses.forEach(r => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${r.current_term || "—"}</td>
+          <td>${r.last_gpa ?? "—"}</td>
+          <td>${r.status || "Pending"}</td>
+          <td>
+            <button class="btn secondary" onclick="openForm('${r.id}')">View/Edit</button>
+          </td>
         `;
-        body.appendChild(tr);
+        tableBody.appendChild(row);
       });
+    } catch (err) {
+      console.error("Error loading courses:", err);
+      messageEl.textContent = "Failed to load your advising records.";
     }
+  }
 
-    // ✅ Add new course
-    document.getElementById("addCourseForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const course_name = document.getElementById("courseName").value.trim();
-      const course_level = document.getElementById("courseLevel").value.trim();
+  function openForm(id) {
+    window.location.href = `advisingform.html?id=${id}&email=${encodeURIComponent(email)}`;
+  }
 
-      if (!course_name || !course_level) return;
-
-      const data = await safeFetchJSON("/advising/add-course", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, course_name, course_level })
-      });
-
-      document.getElementById("message").textContent = data.message || data.error || "";
-      await loadCurrentCourses();
-      await loadHistory();
-    });
-
-    // ✅ Initial load
-    loadSummary();
-  </script>
+  loadCurrentCourses();
+</script>
 </body>
 </html>

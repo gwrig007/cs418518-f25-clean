@@ -99,37 +99,14 @@
       font-weight: 500;
     }
 
-    .btn:hover {
-      background: #004080;
-    }
+    .btn:hover { background: #004080; }
+    .btn.secondary { background: #6c757d; }
+    .btn.secondary:hover { background: #5a6268; }
 
-    .btn.secondary {
-      background: #6c757d;
-    }
-
-    .btn.secondary:hover {
-      background: #5a6268;
-    }
-
-    .small {
-      width: 120px;
-    }
-
-    .msg {
-      margin-top: 14px;
-      color: #a30000;
-      font-weight: 500;
-    }
-
-    .disabled {
-      opacity: 0.6;
-    }
-
-    .footer-btns {
-      margin-top: 20px;
-      display: flex;
-      gap: 10px;
-    }
+    .small { width: 120px; }
+    .msg { margin-top: 14px; color: #a30000; font-weight: 500; }
+    .disabled { opacity: 0.6; }
+    .footer-btns { margin-top: 20px; display: flex; gap: 10px; }
   </style>
 </head>
 <body>
@@ -171,18 +148,29 @@
 
 <script>
   const API_BASE =
-    window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
+    window.location.hostname.includes("127.0.0.1") || window.location.hostname.includes("localhost")
       ? "http://127.0.0.1:8080"
       : "https://cs418518-f25-clean.onrender.com";
 
-  const email = localStorage.getItem("userEmail");
-  if (!email) { alert("Please sign in."); window.location.href = "signin.html"; }
+  // ✅ Fix: always check localStorage for email and keep it through navigation
+  let email = localStorage.getItem("userEmail");
+  if (!email || email === "null" || email.trim() === "") {
+    alert("Please sign in first.");
+    window.location.href = "signin.html";
+  }
+
+  // Ensure query email consistency in URL
+  const urlParams = new URLSearchParams(window.location.search);
+  if (!urlParams.get("email")) {
+    const newUrl = `${window.location.pathname}?email=${encodeURIComponent(email)}${window.location.search ? "&" + window.location.search : ""}`;
+    history.replaceState({}, "", newUrl);
+  }
 
   const params = new URLSearchParams(window.location.search);
   const recordId = params.get("id");
 
   const LEVELS = ["Undergraduate", "Graduate"];
-  const COURSES = ["MATH 101","CS 201","CS 301","ENG 210","HIST 101","BIO 110"];
+  const COURSES = ["MATH 101", "CS 201", "CS 301", "ENG 210", "HIST 101", "BIO 110"];
 
   const courseRowsEl = document.getElementById("courseRows");
   const messageEl = document.getElementById("message");
@@ -194,10 +182,10 @@
   let lastTermCourses = [];
   let isReadOnly = false;
 
-  addBtn.addEventListener("click", (e)=> { e.preventDefault(); addCourseRow(); });
-  cancelBtn.addEventListener("click", ()=> history.back());
+  addBtn.addEventListener("click", (e) => { e.preventDefault(); addCourseRow(); });
+  cancelBtn.addEventListener("click", () => { window.location.href = `classes.html?email=${encodeURIComponent(email)}`; });
 
-  function createSelect(options, selected="") {
+  function createSelect(options, selected = "") {
     const s = document.createElement("select");
     options.forEach(opt => {
       const o = document.createElement("option");
@@ -217,10 +205,10 @@
     const courseSel = createSelect(["", ...COURSES], data.name || "");
     courseSel.style.flex = "1";
 
-    courseSel.addEventListener("change", ()=> {
+    courseSel.addEventListener("change", () => {
       const val = courseSel.value;
       if (val && lastTermCourses.includes(val)) {
-        messageEl.textContent = `You already took ${val} in ${lastTermInput.value}. Remove it from your plan.`;
+        messageEl.textContent = `You already took ${val} in ${lastTermInput.value}.`;
         courseSel.value = "";
       } else {
         messageEl.textContent = "";
@@ -230,7 +218,10 @@
     const removeBtn = document.createElement("button");
     removeBtn.className = "btn secondary small";
     removeBtn.textContent = "Remove";
-    removeBtn.addEventListener("click", (ev)=> { ev.preventDefault(); courseRowsEl.removeChild(row); });
+    removeBtn.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      courseRowsEl.removeChild(row);
+    });
 
     row.appendChild(levelSel);
     row.appendChild(courseSel);
@@ -293,7 +284,7 @@
     await fetchLastTermCourses(e.target.value);
   });
 
-  (async function init(){
+  (async function init() {
     if (recordId) {
       await loadRecord(recordId);
     } else {
@@ -326,24 +317,24 @@
       if (recordId) {
         res = await fetch(`${API_BASE}/advising/update/${recordId}`, {
           method: "PUT",
-          headers: {"Content-Type":"application/json"},
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
       } else {
         res = await fetch(`${API_BASE}/advising/create`, {
           method: "POST",
-          headers: {"Content-Type":"application/json"},
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
       }
 
       if (!res.ok) {
-        const err = await res.json().catch(()=>({message:"Server error"}));
-        messageEl.textContent = err.message || "Failed to save";
+        const err = await res.json().catch(() => ({ message: "Server error" }));
+        messageEl.textContent = err.message || "Failed to save.";
         return;
       }
 
-      window.location.href = "classes.html";
+      window.location.href = `classes.html?email=${encodeURIComponent(email)}`;
     } catch (err) {
       console.error(err);
       messageEl.textContent = "Network or server error.";
