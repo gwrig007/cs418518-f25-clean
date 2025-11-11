@@ -36,7 +36,7 @@ advising.get("/summary", async (req, res) => {
 
     const [[stats]] = await pool.execute(
       `SELECT 
-          MAX(term) AS last_term,
+          MAX(current_term) AS last_term,
           ROUND(AVG(last_gpa), 2) AS avg_gpa,
           COUNT(*) AS advising_count
        FROM advising_records
@@ -63,7 +63,7 @@ advising.get("/summary", async (req, res) => {
 
 /* ===========================
    GET /advising/current-courses?email=
-   Returns most recent term’s courses for this student
+   Returns current term’s courses for this student
 =========================== */
 advising.get("/current-courses", async (req, res) => {
   try {
