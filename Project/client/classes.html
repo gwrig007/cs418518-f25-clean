@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Advising Classes | ODU Course Advising Portal</title>
-  <link rel="stylesheet" href="../style.css" />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <header>
@@ -58,29 +58,53 @@
   <script>
     const email = localStorage.getItem("email");
 
+    // Redirect if no email is stored
+    if (!email) {
+      alert("No email found. Please log in again.");
+      window.location.href = "verify-otp.html";
+    }
+
+    // Helper: Safe fetch that won’t break if server returns HTML or 404
+    async function safeFetchJSON(url, options = {}) {
+      try {
+        const res = await fetch(url, options);
+        if (!res.ok) {
+          console.error(`Fetch failed (${res.status}): ${url}`);
+          return [];
+        }
+        return await res.json();
+      } catch (err) {
+        console.error("Fetch error:", err);
+        return [];
+      }
+    }
+
+    // Load summary and populate all sections
     async function loadSummary() {
-      const res = await fetch(`/advising/summary?email=${email}`);
-      const data = await res.json();
+      const data = await safeFetchJSON(`/advising/summary?email=${email}`);
       const div = document.getElementById("summary");
-      if (!data.u_email) {
+
+      if (!data || !data.u_email) {
         div.textContent = "No advising record found.";
         return;
       }
+
       div.innerHTML = `
         <p><b>Last Term:</b> ${data.last_term || "N/A"}</p>
         <p><b>Last GPA:</b> ${data.last_gpa || "N/A"}</p>
         <p><b>Current Term:</b> ${data.current_term || "N/A"}</p>
         <p><b>Status:</b> ${data.status || "Pending"}</p>
       `;
-      loadLastCourses(data.last_term);
-      loadCurrentCourses();
-      loadHistory();
+
+      await loadLastCourses(data.last_term);
+      await loadCurrentCourses();
+      await loadHistory();
     }
 
+    // Previously taken courses
     async function loadLastCourses(term) {
       if (!term) return;
-      const res = await fetch(`/advising/last-courses?email=${email}&term=${encodeURIComponent(term)}`);
-      const courses = await res.json();
+      const courses = await safeFetchJSON(`/advising/last-courses?email=${email}&term=${encodeURIComponent(term)}`);
       const body = document.querySelector("#lastCourses tbody");
       body.innerHTML = "";
       courses.forEach(c => {
@@ -90,9 +114,9 @@
       });
     }
 
+    // Current courses
     async function loadCurrentCourses() {
-      const res = await fetch(`/advising/current-courses?email=${email}`);
-      const courses = await res.json();
+      const courses = await safeFetchJSON(`/advising/current-courses?email=${email}`);
       const body = document.querySelector("#currentCourses tbody");
       body.innerHTML = "";
       courses.forEach(c => {
@@ -102,9 +126,9 @@
       });
     }
 
+    // Advising history
     async function loadHistory() {
-      const res = await fetch(`/advising/history?email=${email}`);
-      const records = await res.json();
+      const records = await safeFetchJSON(`/advising/history?email=${email}`);
       const body = document.querySelector("#history tbody");
       body.innerHTML = "";
       records.forEach(r => {
@@ -119,19 +143,21 @@
       });
     }
 
+    // Add new course
     document.getElementById("addCourseForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const course_name = document.getElementById("courseName").value;
       const course_level = document.getElementById("courseLevel").value;
-      const res = await fetch("/advising/add-course", {
+
+      const data = await safeFetchJSON("/advising/add-course", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, course_name, course_level })
       });
-      const data = await res.json();
-      document.getElementById("message").textContent = data.message || data.error;
-      loadCurrentCourses();
-      loadHistory();
+
+      document.getElementById("message").textContent = data.message || data.error || "";
+      await loadCurrentCourses();
+      await loadHistory();
     });
 
     loadSummary();

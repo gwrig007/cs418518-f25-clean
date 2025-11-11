@@ -27,27 +27,21 @@ router.get("/history", async (req, res) => {
 
 /* ===========================
    GET /advising/summary?email=
-   Returns total number of advising records and total courses taken
+   Returns summary info for student
 =========================== */
 router.get("/summary", async (req, res) => {
   try {
     const { email } = req.query;
     if (!email) return res.status(400).json({ message: "Email is required" });
 
-    const [[records]] = await pool.execute(
-      "SELECT COUNT(*) AS total_records FROM advising_records WHERE u_email = ?",
+    const [[record]] = await pool.execute(
+      `SELECT u_email, last_term, last_gpa, current_term, status
+       FROM advising_records WHERE u_email = ?
+       ORDER BY created_at DESC LIMIT 1`,
       [email]
     );
 
-    const [[courses]] = await pool.execute(
-      "SELECT COUNT(*) AS total_courses FROM taken_courses WHERE u_email = ?",
-      [email]
-    );
-
-    res.json({
-      total_records: records.total_records || 0,
-      total_courses: courses.total_courses || 0,
-    });
+    res.json(record || {});
   } catch (err) {
     console.error("Summary error:", err);
     res.status(500).json({ message: "Error loading summary" });
@@ -64,10 +58,11 @@ router.get("/current-courses", async (req, res) => {
     if (!email) return res.status(400).json({ message: "Email is required" });
 
     const [rows] = await pool.execute(
-      `SELECT course_name, term 
-       FROM taken_courses 
-       WHERE u_email = ? 
-       ORDER BY term DESC, course_name ASC`,
+      `SELECT course_name, course_level 
+       FROM advising_courses ac
+       JOIN advising_records ar ON ac.record_id = ar.id
+       WHERE ar.u_email = ?
+       ORDER BY course_name ASC`,
       [email]
     );
 
@@ -89,7 +84,6 @@ router.get("/last-courses", async (req, res) => {
 
     let finalTerm = term;
 
-    // If term not provided, get most recent (current) term automatically
     if (!finalTerm) {
       const [latest] = await pool.execute(
         "SELECT term FROM taken_courses WHERE u_email = ? ORDER BY id DESC LIMIT 1",
@@ -101,11 +95,11 @@ router.get("/last-courses", async (req, res) => {
     if (!finalTerm) return res.json([]);
 
     const [rows] = await pool.execute(
-      "SELECT course_name FROM taken_courses WHERE u_email = ? AND term = ?",
+      "SELECT course_name, grade FROM taken_courses WHERE u_email = ? AND term = ?",
       [email, finalTerm]
     );
 
-    res.json(rows.map((r) => r.course_name));
+    res.json(rows);
   } catch (err) {
     console.error("Last courses error:", err);
     res.status(500).json({ message: "Error loading last courses" });
@@ -113,123 +107,33 @@ router.get("/last-courses", async (req, res) => {
 });
 
 /* ===========================
-   GET /advising/:id
-   Fetch a single advising record + its courses
+   POST /advising/add-course
+   Adds a new course (if not already taken)
 =========================== */
-router.get("/:id", async (req, res) => {
+router.post("/add-course", async (req, res) => {
   try {
-    const [records] = await pool.execute(
-      "SELECT * FROM advising_records WHERE id = ?",
-      [req.params.id]
-    );
-    if (records.length === 0)
-      return res.status(404).json({ message: "Record not found" });
+    const { email, course_name, course_level } = req.body;
+    if (!email || !course_name)
+      return res.status(400).json({ message: "Email and course name required" });
 
-    const [courses] = await pool.execute(
-      "SELECT * FROM advising_courses WHERE record_id = ?",
-      [req.params.id]
+    // Prevent duplicates
+    const [exists] = await pool.execute(
+      "SELECT id FROM taken_courses WHERE u_email = ? AND course_name = ?",
+      [email, course_name]
+    );
+    if (exists.length > 0)
+      return res.status(400).json({ message: "Course already taken" });
+
+    // Insert new course
+    await pool.execute(
+      "INSERT INTO taken_courses (u_email, course_name, course_level, term) VALUES (?, ?, ?, 'Current')",
+      [email, course_name, course_level]
     );
 
-    res.json({ record: records[0], courses });
+    res.json({ message: "Course added successfully!" });
   } catch (err) {
-    console.error("Get record error:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
-
-/* ===========================
-   POST /advising/create
-   Prevents re-registering for already taken courses
-=========================== */
-router.post("/create", async (req, res) => {
-  const { email, last_term, last_gpa, current_term, courses } = req.body;
-  if (!email) return res.status(400).json({ message: "Email required" });
-
-  const conn = await pool.getConnection();
-  try {
-    await conn.beginTransaction();
-
-    // Insert advising record
-    const [result] = await conn.execute(
-      `INSERT INTO advising_records (u_email, last_term, last_gpa, current_term, status)
-       VALUES (?, ?, ?, ?, 'Pending')`,
-      [email, last_term, last_gpa, current_term]
-    );
-    const recordId = result.insertId;
-
-    // Insert course plan — prevent duplicates
-    for (const c of courses || []) {
-      const [taken] = await conn.execute(
-        "SELECT id FROM taken_courses WHERE u_email = ? AND course_name = ?",
-        [email, c.name]
-      );
-      if (taken.length > 0) {
-        await conn.rollback();
-        return res.status(400).json({ message: `You have already taken ${c.name}` });
-      }
-
-      await conn.execute(
-        `INSERT INTO advising_courses (record_id, course_level, course_name)
-         VALUES (?, ?, ?)`,
-        [recordId, c.level, c.name]
-      );
-    }
-
-    await conn.commit();
-    res.json({ message: "Advising record created successfully" });
-  } catch (err) {
-    await conn.rollback();
-    console.error("Create advising error:", err);
-    res.status(500).json({ message: "Server error creating advising record" });
-  } finally {
-    conn.release();
-  }
-});
-
-/* ===========================
-   PUT /advising/update/:id
-   Also prevents duplicate course re-enrollment
-=========================== */
-router.put("/update/:id", async (req, res) => {
-  const { email, last_term, last_gpa, current_term, courses } = req.body;
-  const { id } = req.params;
-  const conn = await pool.getConnection();
-  try {
-    await conn.beginTransaction();
-
-    await conn.execute(
-      `UPDATE advising_records 
-       SET last_term=?, last_gpa=?, current_term=?, status='Pending'
-       WHERE id=? AND u_email=?`,
-      [last_term, last_gpa, current_term, id, email]
-    );
-
-    await conn.execute("DELETE FROM advising_courses WHERE record_id=?", [id]);
-
-    for (const c of courses || []) {
-      const [taken] = await conn.execute(
-        "SELECT id FROM taken_courses WHERE u_email = ? AND course_name = ?",
-        [email, c.name]
-      );
-      if (taken.length > 0) {
-        await conn.rollback();
-        return res.status(400).json({ message: `You have already taken ${c.name}` });
-      }
-
-      await conn.execute(
-        "INSERT INTO advising_courses (record_id, course_level, course_name) VALUES (?, ?, ?)",
-        [id, c.level, c.name]
-      );
-    }
-
-    await conn.commit();
-    res.json({ message: "Advising record updated successfully" });
-  } catch (err) {
-    await conn.rollback();
-    console.error("Update advising error:", err);
-    res.status(500).json({ message: "Server error updating record" });
-  } finally {
-    conn.release();
+    console.error("Add course error:", err);
+    res.status(500).json({ message: "Server error adding course" });
   }
 });
 
