@@ -5,9 +5,13 @@ import bodyParser from "body-parser";
 import user from "./route/user.js";
 import advising from "./route/advising.js";
 
-const app = express(); // ✅ define app first
+const app = express();
 const PORT = process.env.PORT || 10000;
 
+// ✅ Serve client files (like classes.html, style.css)
+app.use(express.static("client"));
+
+// ✅ CORS setup
 app.use(
   cors({
     origin: [
@@ -17,18 +21,17 @@ app.use(
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true, // ✅ important if using cookies or auth
+    credentials: true,
   })
 );
 
-// ✅ Also explicitly handle OPTIONS preflight requests
-app.options("/", cors());
+// ✅ Handle preflight requests
+app.options(/.*/, cors());
 
-
-// ✅ Body parser
+// ✅ Parse JSON bodies
 app.use(bodyParser.json());
 
-// ✅ Optional logger
+// ✅ Log requests
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.url}`);
   next();
@@ -36,7 +39,7 @@ app.use((req, res, next) => {
 
 // ✅ Routes
 app.use("/user", user);
-app.use("/advising", advising); // ✅ move here after app is defined
+app.use("/advising", advising); // keep only THIS one
 
 // ✅ Root route
 app.get("/", (req, res) => {

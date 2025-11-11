@@ -1,6 +1,6 @@
-const express = require("express");
+import express from "express";
+import { pool } from "../database/connection.js";
 const router = express.Router();
-const pool = require("../db");
 
 // ✅ Get all advising forms for a user
 router.get("/forms", async (req, res) => {
@@ -11,7 +11,7 @@ router.get("/forms", async (req, res) => {
     }
 
     const [rows] = await pool.query(
-      "SELECT id, current_term, last_gpa, status, created_at FROM advising WHERE email = ? ORDER BY created_at DESC",
+      "SELECT id, current_term, last_gpa, status, created_at FROM advising_forms WHERE email = ? ORDER BY created_at DESC",
       [email]
     );
 
@@ -26,7 +26,7 @@ router.get("/forms", async (req, res) => {
 router.get("/form/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const [rows] = await pool.query("SELECT * FROM advising WHERE id = ?", [id]);
+    const [rows] = await pool.query("SELECT * FROM advising_forms WHERE id = ?", [id]);
 
     if (rows.length === 0) {
       return res.status(404).json({ error: "Advising form not found" });
@@ -49,7 +49,7 @@ router.post("/form", async (req, res) => {
     }
 
     const [result] = await pool.query(
-      "INSERT INTO advising (email, current_term, last_gpa, status, created_at) VALUES (?, ?, ?, ?, NOW())",
+      "INSERT INTO advising_forms (email, current_term, last_gpa, status, created_at) VALUES (?, ?, ?, ?, NOW())",
       [email, current_term, last_gpa || null, status || "Pending"]
     );
 
@@ -67,7 +67,7 @@ router.put("/form/:id", async (req, res) => {
     const { current_term, last_gpa, status } = req.body;
 
     const [result] = await pool.query(
-      "UPDATE advising SET current_term = ?, last_gpa = ?, status = ? WHERE id = ?",
+      "UPDATE advising_forms SET current_term = ?, last_gpa = ?, status = ? WHERE id = ?",
       [current_term, last_gpa, status, id]
     );
 
@@ -82,4 +82,4 @@ router.put("/form/:id", async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;
