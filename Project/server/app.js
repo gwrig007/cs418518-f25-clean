@@ -22,7 +22,7 @@ app.use(
 );
 
 // ✅ Also explicitly handle OPTIONS preflight requests
-app.options("*", cors());
+app.options("/", cors());
 
 
 // ✅ Body parser
