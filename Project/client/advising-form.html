@@ -1,345 +1,229 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Advising Form | ODU Portal</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>New Advising Form | ODU Course Portal</title>
+  <link rel="stylesheet" href="../style.css" />
   <style>
-    :root {
-      --odu-navy: #003366;
-      --odu-blue: #00539B;
-      --light-gray: #f4f6fa;
-    }
-
     body {
       font-family: "Segoe UI", Arial, sans-serif;
-      background: #ffffff;
+      background-color: #f2f5fa;
       margin: 0;
-      padding: 20px;
-      color: var(--odu-navy);
+      padding: 0;
     }
-
-    .wrap {
-      max-width: 980px;
-      margin: 28px auto;
-      background: #ffffff;
-      padding: 24px;
-      border-radius: 10px;
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
-      border: 1px solid #e0e6f0;
+    header {
+      background-color: #003366;
+      color: white;
+      padding: 1rem;
+      text-align: center;
     }
-
-    h1 {
-      color: var(--odu-navy);
-      margin: 0 0 16px 0;
-      font-size: 1.4rem;
+    .container {
+      max-width: 900px;
+      margin: 2rem auto;
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
-
-    h3 {
-      color: var(--odu-navy);
-      margin-top: 24px;
-      margin-bottom: 8px;
+    h2 {
+      text-align: center;
+      color: #003366;
     }
-
-    .grid {
-      display: flex;
-      gap: 12px;
-      align-items: flex-end;
-      flex-wrap: wrap;
-    }
-
-    .col {
-      flex: 1;
-      min-width: 180px;
-    }
-
     label {
       display: block;
-      margin-bottom: 6px;
-      color: var(--odu-navy);
-      font-size: 0.9rem;
-      font-weight: 500;
+      font-weight: bold;
+      margin-top: 1rem;
     }
-
-    input, select {
+    select, input {
       width: 100%;
-      padding: 8px;
+      padding: 0.5rem;
+      margin-top: 0.5rem;
       border-radius: 6px;
-      border: 1px solid #ccd4e0;
-      font-size: 0.95rem;
-      color: var(--odu-navy);
-      background: #f9fbff;
+      border: 1px solid #ccc;
     }
-
-    .courses {
-      margin-top: 20px;
-    }
-
-    .course-row {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 8px;
-      flex-wrap: wrap;
-    }
-
-    .course-row select {
-      flex: 1;
-      min-width: 150px;
-    }
-
-    .btn {
-      background: var(--odu-blue);
-      color: #fff;
-      padding: 8px 14px;
-      border-radius: 8px;
+    button {
+      background-color: #003366;
+      color: white;
       border: none;
+      border-radius: 8px;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
       cursor: pointer;
-      transition: background 0.2s;
-      font-weight: 500;
+      display: block;
+      margin: 1.5rem auto 0;
     }
-
-    .btn:hover { background: #004080; }
-    .btn.secondary { background: #6c757d; }
-    .btn.secondary:hover { background: #5a6268; }
-
-    .small { width: 120px; }
-    .msg { margin-top: 14px; color: #a30000; font-weight: 500; }
-    .disabled { opacity: 0.6; }
-    .footer-btns { margin-top: 20px; display: flex; gap: 10px; }
+    button:hover {
+      background-color: #00509e;
+    }
+    table {
+      width: 100%;
+      margin-top: 1rem;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 0.75rem;
+      border-bottom: 1px solid #ddd;
+    }
+    th {
+      background: #003366;
+      color: white;
+    }
+    .remove-btn {
+      background-color: #b91c1c;
+      padding: 0.3rem 0.7rem;
+      border-radius: 5px;
+    }
+    .remove-btn:hover {
+      background-color: #dc2626;
+    }
   </style>
 </head>
+
 <body>
-  <div class="wrap">
-    <h1 id="title">Course Advising Form</h1>
+  <header>
+    <h1>New Advising Form</h1>
+  </header>
 
-    <section id="headerSection">
-      <div class="grid">
-        <div class="col">
-          <label for="lastTerm">Last Term</label>
-          <input id="lastTerm" placeholder="e.g. Fall 2024" />
-        </div>
-        <div style="width:140px">
-          <label for="lastGpa">Last GPA</label>
-          <input id="lastGpa" type="number" step="0.01" min="0" max="4.0" />
-        </div>
-        <div class="col">
-          <label for="currentTerm">Current Term</label>
-          <input id="currentTerm" placeholder="e.g. Spring 2025" />
-        </div>
-      </div>
-    </section>
+  <div class="container">
+    <h2>Plan Your Courses</h2>
 
-    <section class="courses">
-      <h3>Course Plan</h3>
-      <div id="courseRows"></div>
-      <div style="margin-top:10px">
-        <button id="addBtn" class="btn">+ Add Course</button>
-      </div>
-    </section>
+    <p><strong>Email:</strong> <span id="studentEmail"></span></p>
 
-    <div class="footer-btns">
-      <button id="saveBtn" class="btn">Save</button>
-      <button id="cancelBtn" class="btn secondary">Cancel</button>
-    </div>
+    <label for="courseSelect">Select Course:</label>
+    <select id="courseSelect">
+      <option value="">-- Select a Course --</option>
+    </select>
 
-    <div id="message" class="msg"></div>
+    <label for="levelInput">Course Level:</label>
+    <input type="text" id="levelInput" placeholder="e.g., 300, 400, Graduate" />
+
+    <button id="addCourseBtn">+ Add Course</button>
+
+    <h3>Selected Courses</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Course Name</th>
+          <th>Level</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="courseTableBody">
+        <tr><td colspan="3" style="text-align:center;">No courses added yet.</td></tr>
+      </tbody>
+    </table>
+
+    <button id="submitFormBtn">Submit Advising Form</button>
+    <button onclick="window.location.href='classes.html'" style="background:#6b7280;">Back</button>
   </div>
 
-<script>
-  const API_BASE =
-    window.location.hostname.includes("127.0.0.1") || window.location.hostname.includes("localhost")
-      ? "http://127.0.0.1:8080"
-      : "https://cs418518-f25-clean.onrender.com";
+  <script>
+    const emailSpan = document.getElementById("studentEmail");
+    const email = new URLSearchParams(window.location.search).get("email") || localStorage.getItem("userEmail");
 
-  // ✅ Fix: always check localStorage for email and keep it through navigation
-  let email = localStorage.getItem("userEmail");
-  if (!email || email === "null" || email.trim() === "") {
-    alert("Please sign in first.");
-    window.location.href = "signin.html";
-  }
+    if (!email) {
+      alert("No email found. Please log in again.");
+      window.location.href = "login.html";
+    }
 
-  // Ensure query email consistency in URL
-  const urlParams = new URLSearchParams(window.location.search);
-  if (!urlParams.get("email")) {
-    const newUrl = `${window.location.pathname}?email=${encodeURIComponent(email)}${window.location.search ? "&" + window.location.search : ""}`;
-    history.replaceState({}, "", newUrl);
-  }
+    emailSpan.textContent = email;
+    const courseSelect = document.getElementById("courseSelect");
+    const tableBody = document.getElementById("courseTableBody");
+    let addedCourses = [];
 
-  const params = new URLSearchParams(window.location.search);
-  const recordId = params.get("id");
+    // Load available courses from DB
+    async function loadAvailableCourses() {
+      try {
+        const res = await fetch(`https://cs418518-f25-clean.onrender.com/advising/current-courses?email=${encodeURIComponent(email)}`);
+        const data = await res.json();
 
-  const LEVELS = ["Undergraduate", "Graduate"];
-  const COURSES = ["MATH 101", "CS 201", "CS 301", "ENG 210", "HIST 101", "BIO 110"];
+        if (!Array.isArray(data) || data.length === 0) {
+          courseSelect.innerHTML = `<option>No courses found in database</option>`;
+          return;
+        }
 
-  const courseRowsEl = document.getElementById("courseRows");
-  const messageEl = document.getElementById("message");
-  const addBtn = document.getElementById("addBtn");
-  const saveBtn = document.getElementById("saveBtn");
-  const cancelBtn = document.getElementById("cancelBtn");
-  const lastTermInput = document.getElementById("lastTerm");
-
-  let lastTermCourses = [];
-  let isReadOnly = false;
-
-  addBtn.addEventListener("click", (e) => { e.preventDefault(); addCourseRow(); });
-  cancelBtn.addEventListener("click", () => { window.location.href = `classes.html?email=${encodeURIComponent(email)}`; });
-
-  function createSelect(options, selected = "") {
-    const s = document.createElement("select");
-    options.forEach(opt => {
-      const o = document.createElement("option");
-      o.value = opt;
-      o.textContent = opt;
-      if (opt === selected) o.selected = true;
-      s.appendChild(o);
-    });
-    return s;
-  }
-
-  function addCourseRow(data = { level: LEVELS[0], name: "" }) {
-    const row = document.createElement("div");
-    row.className = "course-row";
-
-    const levelSel = createSelect(LEVELS, data.level);
-    const courseSel = createSelect(["", ...COURSES], data.name || "");
-    courseSel.style.flex = "1";
-
-    courseSel.addEventListener("change", () => {
-      const val = courseSel.value;
-      if (val && lastTermCourses.includes(val)) {
-        messageEl.textContent = `You already took ${val} in ${lastTermInput.value}.`;
-        courseSel.value = "";
-      } else {
-        messageEl.textContent = "";
+        courseSelect.innerHTML = `<option value="">-- Select a Course --</option>`;
+        data.forEach(course => {
+          const opt = document.createElement("option");
+          opt.value = course.course_name;
+          opt.textContent = course.course_name;
+          courseSelect.appendChild(opt);
+        });
+      } catch (err) {
+        console.error("Error loading available courses:", err);
       }
+    }
+
+    // Add course locally to table
+    document.getElementById("addCourseBtn").addEventListener("click", () => {
+      const courseName = courseSelect.value;
+      const courseLevel = document.getElementById("levelInput").value.trim();
+
+      if (!courseName) return alert("Please select a course.");
+      if (!courseLevel) return alert("Please enter course level.");
+
+      // Prevent duplicates
+      if (addedCourses.some(c => c.course_name === courseName)) {
+        return alert("This course has already been added.");
+      }
+
+      addedCourses.push({ course_name: courseName, course_level: courseLevel });
+      updateTable();
     });
 
-    const removeBtn = document.createElement("button");
-    removeBtn.className = "btn secondary small";
-    removeBtn.textContent = "Remove";
-    removeBtn.addEventListener("click", (ev) => {
-      ev.preventDefault();
-      courseRowsEl.removeChild(row);
-    });
+    // Update course table
+    function updateTable() {
+      tableBody.innerHTML = "";
+      addedCourses.forEach((c, i) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${c.course_name}</td>
+          <td>${c.course_level}</td>
+          <td><button class="remove-btn" onclick="removeCourse(${i})">Remove</button></td>
+        `;
+        tableBody.appendChild(row);
+      });
 
-    row.appendChild(levelSel);
-    row.appendChild(courseSel);
-    row.appendChild(removeBtn);
-    courseRowsEl.appendChild(row);
-
-    if (isReadOnly) {
-      levelSel.disabled = true; courseSel.disabled = true; removeBtn.disabled = true;
-      removeBtn.classList.add("disabled");
-    }
-  }
-
-  function gatherCourses() {
-    return Array.from(courseRowsEl.querySelectorAll(".course-row")).map(r => {
-      const sel = r.querySelectorAll("select");
-      return { level: sel[0].value, name: sel[1].value };
-    }).filter(c => c.name);
-  }
-
-  async function fetchLastTermCourses(term) {
-    if (!term) { lastTermCourses = []; return; }
-    try {
-      const res = await fetch(`${API_BASE}/advising/last-courses?email=${encodeURIComponent(email)}&term=${encodeURIComponent(term)}`);
-      if (!res.ok) { lastTermCourses = []; return; }
-      lastTermCourses = await res.json();
-    } catch (err) {
-      console.error("last-courses error", err);
-      lastTermCourses = [];
-    }
-  }
-
-  async function loadRecord(id) {
-    try {
-      const res = await fetch(`${API_BASE}/advising/${id}`);
-      if (!res.ok) throw new Error("Record not found");
-      const { record, courses } = await res.json();
-
-      document.getElementById("title").textContent = `Course Advising Form — ${record.status}`;
-      document.getElementById("lastTerm").value = record.last_term || "";
-      document.getElementById("lastGpa").value = record.last_gpa || "";
-      document.getElementById("currentTerm").value = record.current_term || "";
-
-      await fetchLastTermCourses(record.last_term);
-      courseRowsEl.innerHTML = "";
-      (courses || []).forEach(c => addCourseRow({ level: c.course_level || LEVELS[0], name: c.course_name }));
-
-      if (record.status && record.status !== "Pending") {
-        isReadOnly = true;
-        document.querySelectorAll("input, select, button").forEach(el => {
-          if (el.id !== "cancelBtn") el.disabled = true;
-        });
-      }
-    } catch (err) {
-      console.error(err);
-      messageEl.textContent = "Unable to load record.";
-    }
-  }
-
-  lastTermInput.addEventListener("change", async (e) => {
-    await fetchLastTermCourses(e.target.value);
-  });
-
-  (async function init() {
-    if (recordId) {
-      await loadRecord(recordId);
-    } else {
-      await fetchLastTermCourses(document.getElementById("lastTerm").value);
-      addCourseRow();
-    }
-  })();
-
-  saveBtn.addEventListener("click", async () => {
-    if (isReadOnly) return;
-    messageEl.textContent = "";
-
-    const payload = {
-      email,
-      last_term: document.getElementById("lastTerm").value || null,
-      last_gpa: document.getElementById("lastGpa").value || null,
-      current_term: document.getElementById("currentTerm").value || null,
-      courses: gatherCourses()
-    };
-
-    for (const c of payload.courses) {
-      if (lastTermCourses.includes(c.name)) {
-        messageEl.textContent = `Cannot add ${c.name} — already taken in last term.`;
-        return;
+      if (addedCourses.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="3" style="text-align:center;">No courses added yet.</td></tr>`;
       }
     }
 
-    try {
-      let res;
-      if (recordId) {
-        res = await fetch(`${API_BASE}/advising/update/${recordId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-      } else {
-        res = await fetch(`${API_BASE}/advising/create`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
+    // Remove course from list
+    function removeCourse(index) {
+      addedCourses.splice(index, 1);
+      updateTable();
+    }
+
+    // Submit advising form (send each course)
+    document.getElementById("submitFormBtn").addEventListener("click", async () => {
+      if (addedCourses.length === 0) return alert("Please add at least one course.");
+
+      for (const course of addedCourses) {
+        try {
+          const res = await fetch("https://cs418518-f25-clean.onrender.com/advising/add-course", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email,
+              course_name: course.course_name,
+              course_level: course.course_level
+            })
+          });
+
+          const data = await res.json();
+          console.log("Added:", data);
+        } catch (err) {
+          console.error("Error submitting course:", err);
+        }
       }
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ message: "Server error" }));
-        messageEl.textContent = err.message || "Failed to save.";
-        return;
-      }
-
+      alert("Advising form submitted successfully!");
       window.location.href = `classes.html?email=${encodeURIComponent(email)}`;
-    } catch (err) {
-      console.error(err);
-      messageEl.textContent = "Network or server error.";
-    }
-  });
-</script>
+    });
+
+    loadAvailableCourses();
+  </script>
 </body>
 </html>
