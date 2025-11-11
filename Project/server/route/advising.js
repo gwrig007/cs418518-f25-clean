@@ -82,4 +82,60 @@ router.put("/form/:id", async (req, res) => {
   }
 });
 
+// ✅ Get current courses for a user's advising record
+router.get("/current-courses", async (req, res) => {
+  try {
+    const { email } = req.query;
+
+    if (!email) {
+      return res.status(400).json({ error: "Missing email parameter" });
+    }
+
+    // Find the user's most recent advising record ID
+    const [records] = await pool.query(
+      "SELECT id FROM advising_records WHERE email = ? ORDER BY created_at DESC LIMIT 1",
+      [email]
+    );
+
+    if (records.length === 0) {
+      return res.status(404).json({ error: "No advising records found for this user" });
+    }
+
+    const recordId = records[0].id;
+
+    // Fetch all current courses tied to that record
+    const [courses] = await pool.query(
+      "SELECT id, course_level, course_name FROM advising_courses WHERE record_id = ?",
+      [recordId]
+    );
+
+    res.json(courses);
+  } catch (err) {
+    console.error("Error loading current courses:", err);
+    res.status(500).json({ error: "Unable to fetch current courses" });
+  }
+});
+
+// ✅ Get taken (previous) courses for a user
+router.get("/taken-courses", async (req, res) => {
+  try {
+    const { email } = req.query;
+
+    if (!email) {
+      return res.status(400).json({ error: "Missing email parameter" });
+    }
+
+    const [courses] = await pool.query(
+      "SELECT id, term, course_level, course_name FROM taken_courses WHERE u_email = ? ORDER BY term DESC",
+      [email]
+    );
+
+    res.json(courses);
+  } catch (err) {
+    console.error("Error fetching taken courses:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
 export default router;
