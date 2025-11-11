@@ -127,7 +127,15 @@ router.get("/taken-courses", async (req, res) => {
     }
 
     const [courses] = await pool.query(
-      "SELECT id, term, course_level, course_name FROM taken_courses WHERE u_email = ? ORDER BY term DESC",
+      `SELECT 
+        id,
+        term AS course_term,
+        course_level AS course_code,
+        course_name,
+        grade
+      FROM taken_courses
+      WHERE email = ?
+      ORDER BY term DESC`,
       [email]
     );
 

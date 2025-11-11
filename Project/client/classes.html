@@ -106,74 +106,107 @@
 
     <button id="newFormBtn">+ New Advising Form</button>
   </div>
+<script>
+  const API_BASE = "https://cs418518-f25-clean.onrender.com";
 
-  <script>
-    const API_BASE = "https://cs418518-f25-clean.onrender.com";
+  // --- Get email ---
+  function getEmail() {
+    const params = new URLSearchParams(window.location.search);
+    const emailFromURL = params.get("email");
+    if (emailFromURL) {
+      localStorage.setItem("userEmail", emailFromURL);
+      return emailFromURL;
+    }
+    return localStorage.getItem("userEmail");
+  }
 
-    // --- Get email ---
-    function getEmail() {
-      const params = new URLSearchParams(window.location.search);
-      const emailFromURL = params.get("email");
-      if (emailFromURL) {
-        localStorage.setItem("userEmail", emailFromURL);
-        return emailFromURL;
+  const email = getEmail();
+
+  if (!email) {
+    alert("No email found. Please log in again.");
+    window.location.href = "login.html";
+  }
+
+  // --- Load advising forms ---
+  async function loadAdvisingForms() {
+    const tableBody = document.getElementById("tableBody");
+
+    try {
+      const response = await fetch(`${API_BASE}/advising/forms?email=${encodeURIComponent(email)}`);
+      if (!response.ok) throw new Error("Unable to fetch forms.");
+      const forms = await response.json();
+
+      if (!Array.isArray(forms) || forms.length === 0) {
+        tableBody.innerHTML = "<tr><td colspan='5'>No advising records found.</td></tr>";
+        return;
       }
-      return localStorage.getItem("userEmail");
+
+      tableBody.innerHTML = "";
+      forms.forEach(f => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${f.current_term || "—"}</td>
+          <td>${f.last_gpa ?? "—"}</td>
+          <td>${f.status || "Pending"}</td>
+          <td>${new Date(f.created_at).toLocaleDateString()}</td>
+          <td><button onclick="viewForm(${f.id})">View/Edit</button></td>
+        `;
+        tableBody.appendChild(tr);
+      });
+    } catch (err) {
+      console.error("Error loading forms:", err);
+      tableBody.innerHTML = "<tr><td colspan='5'>Error loading forms.</td></tr>";
     }
+  }
 
-    const email = getEmail();
+  // --- Load taken courses ---
+  async function loadTakenCourses() {
+    const takenBody = document.getElementById("takenCoursesBody");
 
-    if (!email) {
-      alert("No email found. Please log in again.");
-      window.location.href = "login.html";
-    }
+    try {
+      const response = await fetch(`${API_BASE}/advising/taken-courses?email=${encodeURIComponent(email)}`);
+      if (!response.ok) throw new Error("Unable to fetch taken courses.");
+      const courses = await response.json();
 
-    // --- Load advising forms ---
-    async function loadAdvisingForms() {
-      const tableBody = document.getElementById("tableBody");
-
-      try {
-        const response = await fetch(`${API_BASE}/advising/forms?email=${encodeURIComponent(email)}`);
-        if (!response.ok) throw new Error("Unable to fetch forms.");
-        const forms = await response.json();
-
-        if (!Array.isArray(forms) || forms.length === 0) {
-          tableBody.innerHTML = "<tr><td colspan='5'>No advising records found.</td></tr>";
-          return;
-        }
-
-        tableBody.innerHTML = "";
-        forms.forEach(f => {
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
-            <td>${f.current_term || "—"}</td>
-            <td>${f.last_gpa ?? "—"}</td>
-            <td>${f.status || "Pending"}</td>
-            <td>${new Date(f.created_at).toLocaleDateString()}</td>
-            <td><button onclick="viewForm(${f.id})">View/Edit</button></td>
-          `;
-          tableBody.appendChild(tr);
-        });
-      } catch (err) {
-        console.error("Error loading forms:", err);
-        tableBody.innerHTML = "<tr><td colspan='5'>Error loading forms.</td></tr>";
+      if (!Array.isArray(courses) || courses.length === 0) {
+        takenBody.innerHTML = "<tr><td colspan='3'>No previously taken courses found.</td></tr>";
+        return;
       }
+
+      takenBody.innerHTML = "";
+      courses.forEach(c => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${c.course_code || "—"}</td>
+          <td>${c.course_name || "—"}</td>
+          <td>${c.grade || "—"}</td>
+        `;
+        takenBody.appendChild(tr);
+      });
+    } catch (err) {
+      console.error("Error loading taken courses:", err);
+      takenBody.innerHTML = "<tr><td colspan='3'>Error loading taken courses.</td></tr>";
     }
+  }
 
-    function viewForm(id) {
-      window.location.href = `advisingform.html?id=${id}&email=${encodeURIComponent(email)}`;
-    }
+  function viewForm(id) {
+    window.location.href = `advisingform.html?id=${id}&email=${encodeURIComponent(email)}`;
+  }
 
-    document.getElementById("newFormBtn").addEventListener("click", () => {
-      window.location.href = `advisingform.html?email=${encodeURIComponent(email)}`;
-    });
+  document.getElementById("newFormBtn").addEventListener("click", () => {
+    window.location.href = `advisingform.html?email=${encodeURIComponent(email)}`;
+  });
 
-    document.getElementById("logoutBtn").addEventListener("click", () => {
-      localStorage.removeItem("userEmail");
-      window.location.href = "login.html";
-    });
+  document.getElementById("logoutBtn").addEventListener("click", () => {
+    localStorage.removeItem("userEmail");
+    window.location.href = "login.html";
+  });
 
-    loadAdvisingForms();
-  </script>
+  // --- Run both loads ---
+  loadAdvisingForms();
+  loadTakenCourses();
+</script>
+
+  
 </body>
 </html>
