@@ -91,14 +91,14 @@ router.get("/current-courses", async (req, res) => {
       return res.status(400).json({ error: "Missing email parameter" });
     }
 
-    // Find the user's most recent advising record ID
+    // FIXED: use correct column name (u_email)
     const [records] = await pool.query(
-      "SELECT id FROM advising_records WHERE email = ? ORDER BY created_at DESC LIMIT 1",
+      "SELECT id FROM advising_records WHERE u_email = ? ORDER BY created_at DESC LIMIT 1",
       [email]
     );
 
     if (records.length === 0) {
-      return res.status(404).json({ error: "No advising records found for this user" });
+      return res.json([]); // return empty array instead of 404
     }
 
     const recordId = records[0].id;
@@ -115,6 +115,7 @@ router.get("/current-courses", async (req, res) => {
     res.status(500).json({ error: "Unable to fetch current courses" });
   }
 });
+
 
 // ✅ Get taken (previous) courses for a user
 router.get("/taken-courses", async (req, res) => {
