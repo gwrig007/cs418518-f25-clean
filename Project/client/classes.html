@@ -3,21 +3,23 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Course Advising | ODU Portal</title>
+  <title>My Course Advising | ODU Portal</title>
   <link rel="stylesheet" href="../style.css" />
   <style>
     body {
       font-family: "Segoe UI", Arial, sans-serif;
-      background-color: #f2f5fa;
+      background-color: #f4f6fa;
       margin: 0;
       padding: 0;
     }
+
     header {
       background-color: #003366;
       color: white;
       padding: 1rem;
       text-align: center;
     }
+
     .container {
       max-width: 900px;
       margin: 2rem auto;
@@ -26,47 +28,56 @@
       padding: 2rem;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
+
     h2 {
       text-align: center;
       color: #003366;
     }
-    #coursesList {
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
       margin-top: 1.5rem;
     }
-    .course {
-      background: #eef3f9;
-      border: 1px solid #cbd5e1;
-      border-radius: 8px;
-      padding: 1rem;
-      margin-bottom: 1rem;
+
+    th, td {
+      padding: 0.75rem;
+      border-bottom: 1px solid #d1d5db;
+      text-align: left;
     }
+
+    th {
+      background-color: #00539B;
+      color: white;
+    }
+
     button {
       background-color: #003366;
       color: white;
       border: none;
       border-radius: 8px;
-      padding: 0.75rem 1.5rem;
-      font-size: 1rem;
+      padding: 0.5rem 1rem;
       cursor: pointer;
-      display: block;
-      margin: 1rem auto;
     }
+
     button:hover {
       background-color: #00509e;
     }
+
     .logout {
       text-align: right;
       margin-bottom: 1rem;
     }
+
     .logout button {
       background-color: #b91c1c;
     }
+
     .logout button:hover {
       background-color: #dc2626;
     }
   </style>
 </head>
-
 <body>
   <header>
     <h1>Course Advising Portal</h1>
@@ -77,74 +88,83 @@
       <button id="logoutBtn">Logout</button>
     </div>
 
-    <h2>Your Current and Past Courses</h2>
-    <div id="coursesList">Loading your courses...</div>
+    <h2>Your Advising Forms</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Term</th>
+          <th>Last GPA</th>
+          <th>Status</th>
+          <th>Created At</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody">
+        <tr><td colspan="5">Loading...</td></tr>
+      </tbody>
+    </table>
 
     <button id="newFormBtn">+ New Advising Form</button>
   </div>
 
   <script>
-    // --- Ensure email is set properly ---
+    const API_BASE = "https://cs418518-f25-clean.onrender.com";
+
+    // --- Get email ---
     function getEmail() {
-      // Try URL first
       const params = new URLSearchParams(window.location.search);
       const emailFromURL = params.get("email");
       if (emailFromURL) {
         localStorage.setItem("userEmail", emailFromURL);
         return emailFromURL;
       }
-
-      // Then check localStorage
-      const stored = localStorage.getItem("userEmail");
-      return stored;
+      return localStorage.getItem("userEmail");
     }
 
     const email = getEmail();
 
-    // Redirect if still missing
     if (!email) {
       alert("No email found. Please log in again.");
       window.location.href = "login.html";
     }
 
-    // --- Load courses ---
-    async function loadCourses() {
-      const coursesList = document.getElementById("coursesList");
+    // --- Load advising forms ---
+    async function loadAdvisingForms() {
+      const tableBody = document.getElementById("tableBody");
+
       try {
-        const response = await fetch(`https://cs418518-f25-clean.onrender.com/advising/list?email=${encodeURIComponent(email)}`);
-        if (!response.ok) throw new Error("Unable to fetch courses.");
+        const response = await fetch(`${API_BASE}/advising/forms?email=${encodeURIComponent(email)}`);
+        if (!response.ok) throw new Error("Unable to fetch forms.");
+        const forms = await response.json();
 
-        const courses = await response.json();
-
-        if (!Array.isArray(courses) || courses.length === 0) {
-          coursesList.innerHTML = `<p>No advising records found.</p>`;
+        if (!Array.isArray(forms) || forms.length === 0) {
+          tableBody.innerHTML = "<tr><td colspan='5'>No advising records found.</td></tr>";
           return;
         }
 
-        coursesList.innerHTML = "";
-        courses.forEach((course) => {
-          const div = document.createElement("div");
-          div.className = "course";
-          div.innerHTML = `
-            <strong>Term:</strong> ${course.term || "N/A"}<br>
-            <strong>Advisor:</strong> ${course.advisor || "N/A"}<br>
-            <strong>Created:</strong> ${new Date(course.createdAt).toLocaleDateString()}
+        tableBody.innerHTML = "";
+        forms.forEach(f => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${f.current_term || "—"}</td>
+            <td>${f.last_gpa ?? "—"}</td>
+            <td>${f.status || "Pending"}</td>
+            <td>${new Date(f.created_at).toLocaleDateString()}</td>
+            <td><button onclick="viewForm(${f.id})">View/Edit</button></td>
           `;
-          coursesList.appendChild(div);
+          tableBody.appendChild(tr);
         });
       } catch (err) {
-        console.error("Error loading courses:", err);
-        coursesList.innerHTML = `<p>Unable to load your courses right now.</p>`;
+        console.error("Error loading forms:", err);
+        tableBody.innerHTML = "<tr><td colspan='5'>Error loading forms.</td></tr>";
       }
     }
 
-    // --- Button Actions ---
+    function viewForm(id) {
+      window.location.href = `advisingform.html?id=${id}&email=${encodeURIComponent(email)}`;
+    }
+
     document.getElementById("newFormBtn").addEventListener("click", () => {
-      if (!email) {
-        alert("Please log in again.");
-        window.location.href = "login.html";
-        return;
-      }
       window.location.href = `advisingform.html?email=${encodeURIComponent(email)}`;
     });
 
@@ -153,8 +173,7 @@
       window.location.href = "login.html";
     });
 
-    // --- Initialize page ---
-    loadCourses();
+    loadAdvisingForms();
   </script>
 </body>
 </html>
