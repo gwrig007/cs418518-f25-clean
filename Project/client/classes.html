@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Course Advising | ODU Portal</title>
+  <title>My Classes | ODU Course Advising Portal</title>
   <link rel="stylesheet" href="style.css" />
   <style>
     :root {
@@ -30,10 +30,21 @@
       box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     }
 
-    header img { height: 45px; }
-    header h1 { font-size: 1.5rem; margin: 0; font-weight: 600; }
+    header img {
+      height: 45px;
+    }
 
-    .dropdown { position: relative; display: inline-block; }
+    header h1 {
+      font-size: 1.5rem;
+      margin: 0;
+      font-weight: 600;
+    }
+
+    .dropdown {
+      position: relative;
+      display: inline-block;
+    }
+
     .dropdown-toggle {
       background-color: var(--odu-gold);
       color: var(--odu-navy);
@@ -43,6 +54,7 @@
       cursor: pointer;
       font-weight: 600;
     }
+
     .dropdown-menu {
       display: none;
       position: absolute;
@@ -54,19 +66,23 @@
       box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
       min-width: 180px;
       z-index: 999;
-      overflow: hidden;
     }
+
     .dropdown-menu a {
       display: block;
       padding: 12px 16px;
       text-decoration: none;
       color: var(--odu-navy);
     }
+
     .dropdown-menu a:hover {
       background: var(--odu-gold);
       color: var(--odu-navy);
     }
-    .dropdown.show .dropdown-menu { display: block; }
+
+    .dropdown.show .dropdown-menu {
+      display: block;
+    }
 
     .wrap {
       max-width: 980px;
@@ -77,19 +93,9 @@
       box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
     }
 
-    .summary-box {
-      display: flex;
-      justify-content: space-around;
-      text-align: center;
-      margin-bottom: 25px;
-      border: 2px solid var(--odu-gold);
-      border-radius: 10px;
-      padding: 15px;
-      background-color: #f9f9f9;
+    h2, h3 {
+      color: var(--odu-navy);
     }
-
-    .summary-item h3 { margin: 0; color: var(--odu-navy); font-size: 1rem; }
-    .summary-item p { margin: 4px 0 0; font-weight: 600; color: var(--odu-gold); }
 
     .btn {
       background: var(--odu-gold);
@@ -102,15 +108,69 @@
       transition: 0.3s;
     }
 
-    .btn:hover { background: var(--odu-navy); color: var(--odu-white); }
+    .btn:hover {
+      background: var(--odu-navy);
+      color: var(--odu-white);
+    }
 
-    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-    th, td { padding: 10px 12px; border-bottom: 1px solid #e5e7eb; text-align: left; }
-    tr.clickable:hover { background: #f9f9f9; cursor: pointer; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+    }
+
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #e5e7eb;
+      text-align: left;
+    }
+
+    tr.clickable:hover {
+      background: #f9f9f9;
+      cursor: pointer;
+    }
 
     .status-pending { color: #d97706; font-weight: 600; }
     .status-approved { color: #0f5132; font-weight: 600; }
     .status-rejected { color: #842029; font-weight: 600; }
+
+    .no-records {
+      text-align: center;
+      color: #666;
+      padding: 20px 0;
+    }
+
+    .summary-box {
+      display: flex;
+      justify-content: space-around;
+      margin: 20px 0;
+      padding: 15px;
+      background-color: #f9f9f9;
+      border: 2px solid var(--odu-gold);
+      border-radius: 10px;
+    }
+
+    .summary-item {
+      text-align: center;
+    }
+
+    .summary-item h4 {
+      margin: 0;
+      color: var(--odu-gold);
+      font-size: 1.6rem;
+    }
+
+    .summary-item p {
+      margin: 4px 0 0;
+      color: var(--odu-navy);
+    }
+
+    .course-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
 
     .course-tag {
       background-color: var(--odu-gold);
@@ -118,16 +178,16 @@
       padding: 6px 12px;
       border-radius: 6px;
       font-weight: 600;
-      margin: 4px;
-      display: inline-block;
     }
+
+    .no-courses { color: #666; }
   </style>
 </head>
 <body>
   <header>
     <div style="display:flex;align-items:center;gap:15px;">
       <img src="https://upload.wikimedia.org/wikipedia/en/2/2d/Old_Dominion_Monarchs_logo.svg" alt="ODU Logo" />
-      <h1>Course Advising Portal</h1>
+      <h1>My <span style="color:#d4af37;">Classes</span></h1>
     </div>
 
     <div class="dropdown" id="menuDropdown">
@@ -141,26 +201,43 @@
   </header>
 
   <div class="wrap">
-    <h2 style="margin:0 0 10px;color:var(--odu-navy);">My Academic Summary</h2>
-    <div class="summary-box">
-      <div class="summary-item"><h3>Last Term</h3><p id="sumTerm">-</p></div>
-      <div class="summary-item"><h3>Average GPA</h3><p id="sumGpa">-</p></div>
-      <div class="summary-item"><h3>Total Courses</h3><p id="sumCourses">-</p></div>
-      <div class="summary-item"><h3>Advising Records</h3><p id="sumRecords">-</p></div>
-    </div>
-
     <div style="display:flex;justify-content:space-between;align-items:center;">
-      <h2 style="margin:0;color:var(--odu-navy);">Advising History</h2>
+      <h2>Course Advising</h2>
       <button id="newBtn" class="btn">+ New Advising</button>
     </div>
 
-    <table id="historyTable">
-      <thead><tr><th>Date</th><th>Term</th><th>Status</th></tr></thead>
-      <tbody id="historyBody"></tbody>
-    </table>
+    <!-- Summary Section -->
+    <div class="summary-box" id="summaryBox">
+      <div class="summary-item">
+        <h4 id="totalRecords">0</h4>
+        <p>Advising Records</p>
+      </div>
+      <div class="summary-item">
+        <h4 id="totalCourses">0</h4>
+        <p>Courses Taken</p>
+      </div>
+    </div>
 
-    <h3 style="margin-top:40px;color:var(--odu-navy);">Currently Registered Courses</h3>
-    <div id="courseList"></div>
+    <!-- Current Registered Courses -->
+    <section>
+      <h3>Currently Registered Courses</h3>
+      <div id="courseList" class="course-list"></div>
+      <div id="noCourses" class="no-courses" style="display:none;">No registered courses found.</div>
+    </section>
+
+    <!-- Advising History -->
+    <section style="margin-top:30px;">
+      <h3>Advising History</h3>
+      <table id="historyTable">
+        <thead>
+          <tr><th>Date</th><th>Term</th><th>Status</th></tr>
+        </thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+      <div id="noRecords" class="no-records" style="display:none;">
+        No advising records found.
+      </div>
+    </section>
   </div>
 
   <script>
@@ -171,42 +248,23 @@
 
     const email = localStorage.getItem("userEmail");
     if (!email) {
-      alert("Please sign in.");
+      alert("Please sign in first.");
       window.location.href = "signin.html";
     }
 
-    // Load summary
+    document.getElementById("newBtn").addEventListener("click", () => {
+      window.location.href = "advising-form.html";
+    });
+
     async function loadSummary() {
       try {
         const res = await fetch(`${API_BASE}/advising/summary?email=${encodeURIComponent(email)}`);
         if (!res.ok) throw new Error("Failed to load summary");
         const data = await res.json();
-
-        document.getElementById("sumTerm").textContent = data.last_term || "-";
-        document.getElementById("sumGpa").textContent = data.avg_gpa || "-";
-        document.getElementById("sumCourses").textContent = data.total_courses || "-";
-        document.getElementById("sumRecords").textContent = data.advising_count || "-";
+        document.getElementById("totalRecords").textContent = data.total_records ?? 0;
+        document.getElementById("totalCourses").textContent = data.total_courses ?? 0;
       } catch (err) {
         console.error("Error loading summary:", err);
-      }
-    }
-
-    async function loadHistory() {
-      try {
-        const res = await fetch(`${API_BASE}/advising/history?email=${encodeURIComponent(email)}`);
-        if (!res.ok) throw new Error("Failed to load");
-        const rows = await res.json();
-        const body = document.getElementById("historyBody");
-        body.innerHTML = "";
-        rows.forEach(r => {
-          const tr = document.createElement("tr");
-          tr.className = "clickable";
-          tr.innerHTML = `<td>${r.date}</td><td>${r.term || ""}</td><td class="${statusClass(r.status)}">${r.status}</td>`;
-          tr.addEventListener("click", () => window.location.href = `advising-form.html?id=${r.id}`);
-          body.appendChild(tr);
-        });
-      } catch (err) {
-        console.error("Error loading history:", err);
       }
     }
 
@@ -214,13 +272,24 @@
       try {
         const res = await fetch(`${API_BASE}/advising/current-courses?email=${encodeURIComponent(email)}`);
         if (!res.ok) throw new Error("Failed to load courses");
-        const courses = await res.json();
+
+        const data = await res.json();
         const list = document.getElementById("courseList");
+        const none = document.getElementById("noCourses");
         list.innerHTML = "";
-        courses.forEach(course => {
+
+        const courses = Array.isArray(data.courses) ? data.courses : Array.isArray(data) ? data : [];
+
+        if (courses.length === 0) {
+          none.style.display = "block";
+          return;
+        }
+
+        none.style.display = "none";
+        courses.forEach(c => {
           const tag = document.createElement("div");
           tag.className = "course-tag";
-          tag.textContent = course;
+          tag.textContent = c.course_name || c.name || c;
           list.appendChild(tag);
         });
       } catch (err) {
@@ -228,24 +297,59 @@
       }
     }
 
+    async function loadHistory() {
+      try {
+        const res = await fetch(`${API_BASE}/advising/history?email=${encodeURIComponent(email)}`);
+        if (!res.ok) throw new Error("Failed to load history");
+        const rows = await res.json();
+
+        const body = document.getElementById("historyBody");
+        body.innerHTML = "";
+
+        if (!Array.isArray(rows) || rows.length === 0) {
+          document.getElementById("historyTable").style.display = "none";
+          document.getElementById("noRecords").style.display = "block";
+          return;
+        }
+
+        document.getElementById("historyTable").style.display = "";
+        document.getElementById("noRecords").style.display = "none";
+
+        rows.forEach(r => {
+          const tr = document.createElement("tr");
+          tr.className = "clickable";
+          tr.innerHTML =
+            "<td>" + (r.date || "N/A") + "</td>" +
+            "<td>" + (r.term || "") + "</td>" +
+            "<td class='" + statusClass(r.status) + "'>" + (r.status || "N/A") + "</td>";
+          tr.addEventListener("click", () => {
+            window.location.href = "advising-form.html?id=" + encodeURIComponent(r.id);
+          });
+          body.appendChild(tr);
+        });
+      } catch (err) {
+        console.error("Error loading history:", err);
+      }
+    }
+
     function statusClass(s) {
       if (!s) return "";
-      return s.toLowerCase() === "pending" ? "status-pending" :
-             s.toLowerCase() === "approved" ? "status-approved" :
+      s = s.toLowerCase();
+      return s === "pending" ? "status-pending" :
+             s === "approved" ? "status-approved" :
              "status-rejected";
     }
 
-    document.getElementById("newBtn").addEventListener("click", () => {
-      window.location.href = "advising-form.html";
-    });
-
-    document.querySelector(".dropdown-toggle").addEventListener("click", () => {
+    // Dropdown Menu
+    document.querySelector(".dropdown-toggle").addEventListener("click", (e) => {
+      e.stopPropagation();
       document.getElementById("menuDropdown").classList.toggle("show");
     });
 
     window.addEventListener("click", (e) => {
-      if (!document.getElementById("menuDropdown").contains(e.target))
+      if (!document.getElementById("menuDropdown").contains(e.target)) {
         document.getElementById("menuDropdown").classList.remove("show");
+      }
     });
 
     document.getElementById("logoutLink").addEventListener("click", (e) => {
@@ -255,9 +359,10 @@
       window.location.href = "signin.html";
     });
 
+    // Initial Load
     loadSummary();
-    loadHistory();
     loadCurrentCourses();
+    loadHistory();
   </script>
 </body>
 </html>
