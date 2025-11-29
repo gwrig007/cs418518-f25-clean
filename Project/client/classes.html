@@ -1,37 +1,69 @@
-<div class="container">
-  <h1>Your Advising Dashboard</h1>
-  <button id="newFormBtn">➕ New Advising Form</button>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your Advising Dashboard | ODU</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
 
-  <h2>Current Courses</h2>
-  <div id="currentCourses" class="card"></div>
+<body>
 
-  <h2>Courses Taken Last Term</h2>
-  <div id="takenCourses" class="card"></div>
+  <!-- ================= HEADER (same as home.html) ================= -->
+  <header>
+    <div style="display:flex;align-items:center;gap:15px;">
+      <img src="https://upload.wikimedia.org/wikipedia/en/2/2d/Old_Dominion_Monarchs_logo.svg" alt="ODU Logo" />
+      <h1>ODU Course Advising Portal</h1>
+    </div>
 
-  <h2>Your Advising Forms</h2>
-  <div id="formList" class="card"></div>
+    <div class="dropdown" id="menuDropdown">
+      <button class="dropdown-toggle">☰ Menu</button>
+      <div class="dropdown-menu">
+        <a href="home.html">Home</a>
+        <a href="profile.html">Profile</a>
+        <a href="classes.html">Course Advising</a>
+        <a href="#" id="logoutLink">Logout</a>
+      </div>
+    </div>
+  </header>
 
-  <button onclick="window.location.href='home.html'">Back to Home</button>
-</div>
+  <!-- ================= MAIN CONTENT ================= -->
+  <div class="container">
+    <h1>Your Advising Dashboard</h1>
+    <button id="newFormBtn" class="btn" style="margin-bottom:20px;">➕ New Advising Form</button>
+
+    <h2 class="section-title">Current Courses</h2>
+    <div id="currentCourses" class="card"></div>
+
+    <h2 class="section-title">Courses Taken Last Term</h2>
+    <div id="takenCourses" class="card"></div>
+
+    <h2 class="section-title">Your Advising Forms</h2>
+    <div id="formList" class="card"></div>
+
+    <button class="btn" onclick="window.location.href='home.html'" style="margin-top:20px;">Back to Home</button>
+  </div>
+
+  <footer>
+    © 2025 Old Dominion University | Course Advising System
+  </footer>
 
 <script>
 const BASE_URL = "https://cs418518-f25-clean.onrender.com/advising";
 
-// Get email from localStorage
+// Get email
 let email = localStorage.getItem("userEmail");
-
-// Redirect if no email
 if (!email) {
   alert("You must sign in again.");
   window.location.href = "signin.html";
 }
 
-// Button to open new advising form
+// New Form Button
 document.getElementById("newFormBtn").onclick = () => {
   window.location.href = `advisingform.html`;
 };
 
-// Helper to fetch data safely
+// Fetch helper
 async function fetchData(endpoint) {
   try {
     const res = await fetch(`${BASE_URL}/${endpoint}?email=${encodeURIComponent(email)}`);
@@ -43,39 +75,58 @@ async function fetchData(endpoint) {
   }
 }
 
-// Load current courses
+// Load Data
 async function loadCurrentCourses() {
   const courses = await fetchData("current-courses");
   const div = document.getElementById("currentCourses");
   div.innerHTML = courses.length ? courses.map(c => `<p>${c}</p>`).join("") : "<p>No current courses.</p>";
 }
 
-// Load taken courses
 async function loadTakenCourses() {
   const courses = await fetchData("taken-courses");
   const div = document.getElementById("takenCourses");
   div.innerHTML = courses.length ? courses.map(c => `<p>${c}</p>`).join("") : "<p>No courses taken last term.</p>";
 }
 
-// Load advising forms
 async function loadForms() {
   const forms = await fetchData("forms");
   const div = document.getElementById("formList");
+
   div.innerHTML = forms.length
     ? forms.map(f => `
-      <p>
+      <div style="margin-bottom:10px;">
         <strong>Term:</strong> ${f.current_term}<br>
         <strong>Status:</strong> ${f.status}<br>
-        <button onclick="window.location.href='advisingform.html?formId=${f.id}'">
+        <button class="btn" style="margin-top:8px;" onclick="window.location.href='advisingform.html?formId=${f.id}'">
           View / Edit
         </button>
-      </p>
+      </div>
     `).join("")
     : "<p>No advising forms found.</p>";
 }
 
-// Load all
 loadCurrentCourses();
 loadTakenCourses();
 loadForms();
+
+// Dropdown toggle
+document.querySelector(".dropdown-toggle").addEventListener("click", () => {
+  document.getElementById("menuDropdown").classList.toggle("show");
+});
+
+// Close dropdown when clicking outside
+window.addEventListener("click", (e) => {
+  const menu = document.getElementById("menuDropdown");
+  if (!menu.contains(e.target)) menu.classList.remove("show");
+});
+
+// Logout
+document.getElementById("logoutLink").addEventListener("click", (e) => {
+  e.preventDefault();
+  localStorage.clear();
+  alert("Logged out.");
+  window.location.href = "signin.html";
+});
 </script>
+</body>
+</html>
