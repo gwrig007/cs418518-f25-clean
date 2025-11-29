@@ -3,87 +3,109 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Your Advising Dashboard</title>
+  <title>Your Advising Forms</title>
   <link rel="stylesheet" href="style.css" />
+
+  <style>
+    .form-card {
+      background: #f8f8f8;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 15px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .status-pending { color: #c39200; font-weight: bold; }
+    .status-approved { color: green; font-weight: bold; }
+    .status-rejected { color: red; font-weight: bold; }
+    .btn {
+      padding: 8px 14px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    .btn-edit { background: #0275d8; color: white; }
+    .btn-new { background: #28a745; color: white; margin-bottom: 20px; }
+    .btn-view { background: #555; color: white; }
+  </style>
 </head>
 <body>
 
 <div class="container">
-  <h1>Your Advising Dashboard</h1>
-  <button id="newFormBtn">➕ New Advising Form</button>
+  <h1>Your Advising Forms</h1>
 
-  <h2>Current Courses</h2>
-  <div id="currentCourses" class="card"></div>
+  <button class="btn btn-new" onclick="newForm()">+ Create New Advising Form</button>
 
-  <h2>Courses Taken Last Term</h2>
-  <div id="takenCourses" class="card"></div>
+  <div id="formsContainer"></div>
 
-  <h2>Your Advising Forms</h2>
-  <div id="formList" class="card"></div>
-
-  <button onclick="window.location.href='home.html'">Back to Home</button>
+  <button class="btn" onclick="window.location.href='home.html'">Back</button>
 </div>
 
 <script>
 const BASE_URL = "https://cs418518-f25-clean.onrender.com/advising";
 
-// Email from login
 let email = localStorage.getItem("userEmail");
 if (!email) {
-  alert("You must sign in again.");
+  alert("You must sign in.");
   window.location.href = "signin.html";
 }
 
-document.getElementById("newFormBtn").onclick = () => {
-  window.location.href = `advisingform.html`;
-};
+/* ---------------------------------------------------------
+   LOAD ALL FORMS FOR THIS USER
+--------------------------------------------------------- */
+function loadForms() {
+  fetch(`${BASE_URL}/forms?email=${email}`)
+    .then(res => res.json())
+    .then(forms => {
+      const container = document.getElementById("formsContainer");
+      container.innerHTML = "";
 
-async function fetchData(endpoint) {
-  try {
-    const res = await fetch(`${BASE_URL}/${endpoint}?email=${encodeURIComponent(email)}`);
-    if (!res.ok) throw new Error(endpoint + " failed");
-    return await res.json();
-  } catch (err) {
-    console.error(err);
-    return [];
-  }
+      if (forms.length === 0) {
+        container.innerHTML = "<p>You have not submitted any advising forms yet.</p>";
+        return;
+      }
+
+      forms.forEach(form => {
+        const div = document.createElement("div");
+        div.className = "form-card";
+
+        let statusClass = "status-pending";
+        if (form.status === "Approved") statusClass = "status-approved";
+        if (form.status === "Rejected") statusClass = "status-rejected";
+
+        div.innerHTML = `
+          <p><strong>Term:</strong> ${form.current_term}</p>
+          <p><strong>Status:</strong> <span class="${statusClass}">${form.status}</span></p>
+          <p><strong>Submitted:</strong> ${new Date(form.created_at).toLocaleDateString()}</p>
+          ${form.status === "Pending"
+            ? `<button class="btn btn-edit" onclick="editForm(${form.id})">Edit</button>`
+            : `<button class="btn btn-view" onclick="viewForm(${form.id})">View</button>`
+          }
+        `;
+
+        container.appendChild(div);
+      });
+    });
 }
 
-// Load Current Courses
-async function loadCurrentCourses() {
-  const courses = await fetchData("current-courses");
-  document.getElementById("currentCourses").innerHTML =
-    courses.length ? courses.map(c => `<p>${c}</p>`).join("") : "<p>No current courses.</p>";
-}
-
-// Load Last Term Courses
-async function loadTakenCourses() {
-  const courses = await fetchData("taken-courses");
-  document.getElementById("takenCourses").innerHTML =
-    courses.length ? courses.map(c => `<p>${c}</p>`).join("") : "<p>No courses taken last term.</p>";
-}
-
-// Load Advising Forms
-async function loadForms() {
-  const forms = await fetchData("forms");
-  document.getElementById("formList").innerHTML =
-    forms.length
-      ? forms.map(f => `
-        <p>
-          <strong>Term:</strong> ${f.current_term}<br>
-          <strong>Status:</strong> ${f.status}<br>
-          <button onclick="window.location.href='advisingform.html?formId=${f.id}'">
-            View / Edit
-          </button>
-        </p>
-      `).join("")
-      : "<p>No advising forms found.</p>";
-}
-
-// Load all
-loadCurrentCourses();
-loadTakenCourses();
 loadForms();
+
+/* ---------------------------------------------------------
+   BUTTON ACTIONS
+--------------------------------------------------------- */
+
+function newForm() {
+  window.location.href = "advisingform.html";
+}
+
+function editForm(id) {
+  window.location.href = `advisingform.html?formId=${id}`;
+}
+
+function viewForm(id) {
+  window.location.href = `advisingform.html?formId=${id}`;
+}
+
 </script>
 
 </body>
