@@ -1,16 +1,5 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Course Advising Dashboard</title>
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body>
-
 <div class="container">
   <h1>Your Advising Dashboard</h1>
-
   <button id="newFormBtn">➕ New Advising Form</button>
 
   <h2>Current Courses</h2>
@@ -26,94 +15,67 @@
 </div>
 
 <script>
-// ======================================================
-//  Get the logged-in user's email from localStorage
-// ======================================================
-const email = localStorage.getItem("userEmail");
+const BASE_URL = "https://cs418518-f25-clean.onrender.com/advising";
 
+// Get email from localStorage
+let email = localStorage.getItem("userEmail");
+
+// Redirect if no email
 if (!email) {
   alert("You must sign in again.");
   window.location.href = "signin.html";
 }
 
-// Button to open advising form
+// Button to open new advising form
 document.getElementById("newFormBtn").onclick = () => {
   window.location.href = `advisingform.html`;
 };
 
-// Load dashboard data
+// Helper to fetch data safely
+async function fetchData(endpoint) {
+  try {
+    const res = await fetch(`${BASE_URL}/${endpoint}?email=${encodeURIComponent(email)}`);
+    if (!res.ok) throw new Error(`${endpoint} fetch failed: ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error(err);
+    return [];
+  }
+}
+
+// Load current courses
+async function loadCurrentCourses() {
+  const courses = await fetchData("current-courses");
+  const div = document.getElementById("currentCourses");
+  div.innerHTML = courses.length ? courses.map(c => `<p>${c}</p>`).join("") : "<p>No current courses.</p>";
+}
+
+// Load taken courses
+async function loadTakenCourses() {
+  const courses = await fetchData("taken-courses");
+  const div = document.getElementById("takenCourses");
+  div.innerHTML = courses.length ? courses.map(c => `<p>${c}</p>`).join("") : "<p>No courses taken last term.</p>";
+}
+
+// Load advising forms
+async function loadForms() {
+  const forms = await fetchData("forms");
+  const div = document.getElementById("formList");
+  div.innerHTML = forms.length
+    ? forms.map(f => `
+      <p>
+        <strong>Term:</strong> ${f.current_term}<br>
+        <strong>Status:</strong> ${f.status}<br>
+        <button onclick="window.location.href='advisingform.html?formId=${f.id}'">
+          View / Edit
+        </button>
+      </p>
+    `).join("")
+    : "<p>No advising forms found.</p>";
+}
+
+// Load all
 loadCurrentCourses();
 loadTakenCourses();
 loadForms();
-
-// ======================================================
-//  CURRENT COURSES
-// ======================================================
-async function loadCurrentCourses() {
-  try {
-    const res = await fetch(`/advising/current-courses?email=${email}`);
-    if (!res.ok) throw new Error("Unable to fetch current courses.");
-
-    const courses = await res.json();
-    const div = document.getElementById("currentCourses");
-
-    div.innerHTML = courses.length
-      ? courses.map(c => `<p>${c}</p>`).join("")
-      : "<p>No current courses.</p>";
-
-  } catch (err) {
-    console.error("Error loading current courses:", err);
-  }
-}
-
-// ======================================================
-//  TAKEN COURSES
-// ======================================================
-async function loadTakenCourses() {
-  try {
-    const res = await fetch(`/advising/taken-courses?email=${email}`);
-    if (!res.ok) throw new Error("Unable to fetch taken courses.");
-
-    const courses = await res.json();
-    const div = document.getElementById("takenCourses");
-
-    div.innerHTML = courses.length
-      ? courses.map(c => `<p>${c}</p>`).join("")
-      : "<p>No courses taken last term.</p>";
-
-  } catch (err) {
-    console.error("Error loading taken courses:", err);
-  }
-}
-
-// ======================================================
-//  ADVISING FORMS LIST
-// ======================================================
-async function loadForms() {
-  try {
-    const res = await fetch(`/advising/forms?email=${email}`);
-    if (!res.ok) throw new Error("Unable to fetch forms.");
-
-    const forms = await res.json();
-    const div = document.getElementById("formList");
-
-    div.innerHTML = forms.length
-      ? forms.map(f =>
-        `<p>
-          <strong>Term:</strong> ${f.current_term}<br>
-          <strong>Status:</strong> ${f.status}<br>
-          <button onclick="window.location.href='advisingform.html?formId=${f.id}'">
-            View / Edit
-          </button>
-        </p>`
-      ).join("")
-      : "<p>No advising forms found.</p>";
-
-  } catch (err) {
-    console.error("Error loading forms:", err);
-  }
-}
 </script>
-
-</body>
-</html>

@@ -1,20 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Advising Form</title>
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body>
-
 <div class="container">
   <h1>Course Advising Form</h1>
 
   <form id="advisingForm">
-
     <input type="hidden" id="formId" />
-
     <label>Email</label>
     <input type="email" id="email" readonly />
 
@@ -29,43 +17,56 @@
 
     <h3>Select Courses</h3>
     <p class="note">Courses taken last term will be disabled.</p>
-
     <div id="courseList"></div>
 
     <button type="submit" id="saveBtn">Save Advising Form</button>
-    <button type="button" onclick="window.location.href='classes.html?email=' + email.value">Back</button>
+    <button type="button" onclick="window.location.href='classes.html'">Back</button>
   </form>
 </div>
 
 <script>
+const BASE_URL = "https://cs418518-f25-clean.onrender.com/advising";
+
+// Get email from localStorage or query param
+let email = localStorage.getItem("userEmail");
 const params = new URLSearchParams(window.location.search);
-const email = params.get("email");
 const formId = params.get("formId");
+if (!email && params.get("email")) email = params.get("email");
+
+if (!email) {
+  alert("You must sign in to access this page.");
+  window.location.href = "signin.html";
+}
+
 document.getElementById("email").value = email;
 
-loadCourses();
-
+// Load available courses
 async function loadCourses() {
   try {
-    const res = await fetch(`/advising/current-courses?email=${email}`);
+    const res = await fetch(`${BASE_URL}/current-courses?email=${encodeURIComponent(email)}`);
     if (!res.ok) throw new Error("Unable to fetch courses.");
 
     const courses = await res.json();
+    const div = document.getElementById("courseList");
 
-    document.getElementById("courseList").innerHTML = courses.length
-      ? courses.map(c =>
-          `<label>
-             <input type="checkbox" name="selectedCourses" value="${c}" />
-             ${c}
-           </label><br>`
-        ).join("")
+    div.innerHTML = courses.length
+      ? courses.map(c => `
+          <label>
+            <input type="checkbox" name="selectedCourses" value="${c}" />
+            ${c}
+          </label><br>
+        `).join("")
       : "<p>No available courses.</p>";
 
   } catch (err) {
-    console.error("Error loading current courses:", err);
+    console.error("Error loading courses:", err);
+    document.getElementById("courseList").innerHTML = "<p>Error loading courses.</p>";
   }
 }
 
+loadCourses();
+
+// Handle form submit
 document.getElementById("advisingForm").addEventListener("submit", async (e) => {
   e.preventDefault();
 
@@ -81,11 +82,9 @@ document.getElementById("advisingForm").addEventListener("submit", async (e) => 
     selectedCourses
   };
 
-  console.log("Saving:", data);
+  console.log("Saving form:", data);
 
-  alert("Form saved (frontend only — make sure backend route exists).");
+  // TODO: POST to backend endpoint
+  alert("Form saved (frontend only — implement backend route).");
 });
 </script>
-
-</body>
-</html>
