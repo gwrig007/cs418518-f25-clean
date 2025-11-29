@@ -3,130 +3,163 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Your Advising Dashboard | ODU</title>
+  <title>Your Courses</title>
   <link rel="stylesheet" href="style.css" />
+
+  <style>
+    .container {
+      max-width: 900px;
+      margin: 40px auto;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    h2 {
+      margin-top: 25px;
+      border-bottom: 2px solid #ddd;
+      padding-bottom: 5px;
+    }
+
+    .course-box, .form-box {
+      background: #f9f9f9;
+      padding: 12px 15px;
+      margin: 8px 0;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+    }
+
+    .btn {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 12px 20px;
+      background: #0050b3;
+      color: white;
+      border-radius: 6px;
+      text-decoration: none;
+      transition: 0.2s;
+    }
+
+    .btn:hover {
+      background: #003d8a;
+    }
+
+    .form-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      border: 1px solid #ccc;
+      background: #f7f7f7;
+      border-radius: 6px;
+      margin: 10px 0;
+    }
+
+    .form-status {
+      font-weight: bold;
+    }
+
+    .view-btn {
+      padding: 8px 12px;
+      background: #0066cc;
+      color: white;
+      border-radius: 6px;
+      text-decoration: none;
+    }
+
+    .view-btn:hover {
+      background: #004c99;
+    }
+  </style>
 </head>
 
 <body>
 
-  <!-- ================= HEADER (same as home.html) ================= -->
-  <header>
-    <div style="display:flex;align-items:center;gap:15px;">
-      <img src="https://upload.wikimedia.org/wikipedia/en/2/2d/Old_Dominion_Monarchs_logo.svg" alt="ODU Logo" />
-      <h1>ODU Course Advising Portal</h1>
-    </div>
-
-    <div class="dropdown" id="menuDropdown">
-      <button class="dropdown-toggle">☰ Menu</button>
-      <div class="dropdown-menu">
-        <a href="home.html">Home</a>
-        <a href="profile.html">Profile</a>
-        <a href="classes.html">Course Advising</a>
-        <a href="#" id="logoutLink">Logout</a>
-      </div>
-    </div>
-  </header>
-
-  <!-- ================= MAIN CONTENT ================= -->
   <div class="container">
-    <h1>Your Advising Dashboard</h1>
-    <button id="newFormBtn" class="btn" style="margin-bottom:20px;">➕ New Advising Form</button>
+    <h1>Your Courses & Advising Forms</h1>
 
-    <h2 class="section-title">Current Courses</h2>
-    <div id="currentCourses" class="card"></div>
+    <!-- CURRENT COURSES -->
+    <h2>Current Courses</h2>
+    <div id="currentCourses">
+      <p>Loading...</p>
+    </div>
 
-    <h2 class="section-title">Courses Taken Last Term</h2>
-    <div id="takenCourses" class="card"></div>
+    <!-- COMPLETED COURSES -->
+    <h2>Completed Courses</h2>
+    <div id="completedCourses">
+      <p>Loading...</p>
+    </div>
 
-    <h2 class="section-title">Your Advising Forms</h2>
-    <div id="formList" class="card"></div>
+    <!-- ADVISING FORMS -->
+    <h2>Your Advising Forms</h2>
+    <div id="formsList">
+      <p>Loading...</p>
+    </div>
 
-    <button class="btn" onclick="window.location.href='home.html'" style="margin-top:20px;">Back to Home</button>
+    <a class="btn" href="advisingform.html">Create New Advising Form</a>
   </div>
 
-  <footer>
-    © 2025 Old Dominion University | Course Advising System
-  </footer>
+  <script>
+    const email = localStorage.getItem("userEmail");
 
-<script>
-const BASE_URL = "https://cs418518-f25-clean.onrender.com/advising";
+    /* ---------------- Load Current Courses ---------------- */
+    async function loadCurrent() {
+      const res = await fetch(`/advising/current-courses?email=${email}`);
+      const data = await res.json();
 
-// Get email
-let email = localStorage.getItem("userEmail");
-if (!email) {
-  alert("You must sign in again.");
-  window.location.href = "signin.html";
-}
+      const box = document.getElementById("currentCourses");
+      box.innerHTML = data.length
+        ? data.map(c => `<div class="course-box">${c}</div>`).join("")
+        : "<p>No current courses.</p>";
+    }
 
-// New Form Button
-document.getElementById("newFormBtn").onclick = () => {
-  window.location.href = `advisingform.html`;
-};
+    /* ---------------- Load Completed Courses ---------------- */
+    async function loadCompleted() {
+      const res = await fetch(`/advising/taken-courses?email=${email}`);
+      const data = await res.json();
 
-// Fetch helper
-async function fetchData(endpoint) {
-  try {
-    const res = await fetch(`${BASE_URL}/${endpoint}?email=${encodeURIComponent(email)}`);
-    if (!res.ok) throw new Error(`${endpoint} fetch failed: ${res.status}`);
-    return await res.json();
-  } catch (err) {
-    console.error(err);
-    return [];
-  }
-}
+      const box = document.getElementById("completedCourses");
+      box.innerHTML = data.length
+        ? data.map(c => `<div class="course-box">${c}</div>`).join("")
+        : "<p>No completed courses.</p>";
+    }
 
-// Load Data
-async function loadCurrentCourses() {
-  const courses = await fetchData("current-courses");
-  const div = document.getElementById("currentCourses");
-  div.innerHTML = courses.length ? courses.map(c => `<p>${c}</p>`).join("") : "<p>No current courses.</p>";
-}
+    /* ---------------- Load Advising Forms ---------------- */
+    async function loadForms() {
+      const res = await fetch(`/advising/forms?email=${email}`);
+      const data = await res.json();
 
-async function loadTakenCourses() {
-  const courses = await fetchData("taken-courses");
-  const div = document.getElementById("takenCourses");
-  div.innerHTML = courses.length ? courses.map(c => `<p>${c}</p>`).join("") : "<p>No courses taken last term.</p>";
-}
+      const box = document.getElementById("formsList");
 
-async function loadForms() {
-  const forms = await fetchData("forms");
-  const div = document.getElementById("formList");
+      if (!data.length) {
+        box.innerHTML = "<p>No advising forms submitted yet.</p>";
+        return;
+      }
 
-  div.innerHTML = forms.length
-    ? forms.map(f => `
-      <div style="margin-bottom:10px;">
-        <strong>Term:</strong> ${f.current_term}<br>
-        <strong>Status:</strong> ${f.status}<br>
-        <button class="btn" style="margin-top:8px;" onclick="window.location.href='advisingform.html?formId=${f.id}'">
-          View / Edit
-        </button>
-      </div>
-    `).join("")
-    : "<p>No advising forms found.</p>";
-}
+      box.innerHTML = data
+        .map(
+          f => `
+          <div class="form-row">
+            <div>
+              <div><strong>Term:</strong> ${f.current_term}</div>
+              <div class="form-status"><strong>Status:</strong> ${f.status}</div>
+              <div><small>Submitted: ${new Date(f.created_at).toLocaleString()}</small></div>
+            </div>
 
-loadCurrentCourses();
-loadTakenCourses();
-loadForms();
+            <a class="view-btn" href="advisingform.html?id=${f.id}">
+              View / Edit
+            </a>
+          </div>
+        `
+        )
+        .join("");
+    }
 
-// Dropdown toggle
-document.querySelector(".dropdown-toggle").addEventListener("click", () => {
-  document.getElementById("menuDropdown").classList.toggle("show");
-});
+    loadCurrent();
+    loadCompleted();
+    loadForms();
+  </script>
 
-// Close dropdown when clicking outside
-window.addEventListener("click", (e) => {
-  const menu = document.getElementById("menuDropdown");
-  if (!menu.contains(e.target)) menu.classList.remove("show");
-});
-
-// Logout
-document.getElementById("logoutLink").addEventListener("click", (e) => {
-  e.preventDefault();
-  localStorage.clear();
-  alert("Logged out.");
-  window.location.href = "signin.html";
-});
-</script>
 </body>
 </html>

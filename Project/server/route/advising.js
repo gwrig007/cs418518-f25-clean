@@ -16,12 +16,10 @@ async function getUserId(email) {
 
 /* -------------------------------------------------------
    1️⃣ GET CURRENT COURSES
-   FRONTEND CALLS: /advising/current-courses
 ------------------------------------------------------- */
 router.get("/current-courses", async (req, res) => {
   try {
     const { email } = req.query;
-
     const userId = await getUserId(email);
     if (!userId) return res.json([]);
 
@@ -40,8 +38,7 @@ router.get("/current-courses", async (req, res) => {
 });
 
 /* -------------------------------------------------------
-   2️⃣ GET LAST-TERM COURSES
-   FRONTEND CALLS: /advising/taken-courses
+   2️⃣ GET LAST-TERM (COMPLETED) COURSES
 ------------------------------------------------------- */
 router.get("/taken-courses", async (req, res) => {
   try {
@@ -67,12 +64,10 @@ router.get("/taken-courses", async (req, res) => {
 
 /* -------------------------------------------------------
    3️⃣ GET ALL ADVISING FORMS
-   FRONTEND CALLS: /advising/forms
 ------------------------------------------------------- */
 router.get("/forms", async (req, res) => {
   try {
     const { email } = req.query;
-
     const userId = await getUserId(email);
     if (!userId) return res.json([]);
 
@@ -93,14 +88,13 @@ router.get("/forms", async (req, res) => {
 
 /* -------------------------------------------------------
    4️⃣ GET SINGLE FORM BY ID
-   FRONTEND CALLS: /advising/form?formId=#
 ------------------------------------------------------- */
 router.get("/form", async (req, res) => {
   try {
     const { formId } = req.query;
 
     const [[form]] = await pool.query(
-      `SELECT id, current_term, last_gpa, status
+      `SELECT id, current_term, last_gpa, status, last_term
        FROM advising 
        WHERE id = ?`,
       [formId]
@@ -125,8 +119,7 @@ router.get("/form", async (req, res) => {
 });
 
 /* -------------------------------------------------------
-   5️⃣ SAVE OR UPDATE FORM
-   FRONTEND CALLS: POST /advising/save
+   5️⃣ CREATE OR UPDATE ADVISING FORM
 ------------------------------------------------------- */
 router.post("/save", async (req, res) => {
   try {
@@ -138,28 +131,60 @@ router.post("/save", async (req, res) => {
 
     let newId = formId;
 
-    // CREATE NEW FORM
+    /* -----------------------------------------
+       If no formId → CREATE new advising form
+    ----------------------------------------- */
     if (!formId) {
       const [result] = await pool.query(
-        `INSERT INTO advising (user_id, current_term, last_gpa, status, created_at)
-         VALUES (?, ?, ?, ?, NOW())`,
-        [userId, currentTerm, lastGPA, "Pending"]
+        `INSERT INTO advising 
+         (user_id, current_term, last_gpa, status, last_term, created_at)
+         VALUES (?, ?, ?, ?, ?, NOW())`,
+        [userId, currentTerm, lastGPA, "Pending", "Fall 2024"]
       );
+
       newId = result.insertId;
+    } else {
+      /* -----------------------------------------
+         UPDATE existing form
+      ----------------------------------------- */
+
+      // IMPORTANT: If Accepted/Rejected → lock editing
+      const [[check]] = await pool.query(
+        `SELECT status FROM advising WHERE id = ?`,
+        [formId]
+      );
+
+      if (check.status === "Accepted" || check.status === "Rejected") {
+        return res.status(403).json({
+          error: "This advising form is locked and cannot be edited.",
+        });
+      }
+
+      await pool.query(
+        `UPDATE advising 
+         SET current_term=?, last_gpa=?, status=?
+         WHERE id=?`,
+        [currentTerm, lastGPA, status, formId]
+      );
     }
 
-    // DELETE OLD COURSE SELECTIONS
+    /* -----------------------------------------
+       REMOVE all old courses for this advising form
+    ----------------------------------------- */
     await pool.query(
       `DELETE FROM advising_courses WHERE advising_id = ?`,
       [newId]
     );
 
-    // INSERT NEW SELECTED COURSES
+    /* -----------------------------------------
+       INSERT new selected courses
+    ----------------------------------------- */
     for (const c of selectedCourses) {
       await pool.query(
-        `INSERT INTO advising_courses (advising_id, user_id, course_name, status)
-         VALUES (?, ?, ?, 'Pending')`,
-        [newId, userId, c]
+        `INSERT INTO advising_courses 
+         (advising_id, user_id, course_name, status, term)
+         VALUES (?, ?, ?, 'Planned', ?)`,
+        [newId, userId, c, currentTerm]
       );
     }
 
