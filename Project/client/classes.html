@@ -3,163 +3,88 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Your Courses</title>
+  <title>Your Advising Dashboard</title>
   <link rel="stylesheet" href="style.css" />
-
-  <style>
-    .container {
-      max-width: 900px;
-      margin: 40px auto;
-      background: white;
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }
-
-    h2 {
-      margin-top: 25px;
-      border-bottom: 2px solid #ddd;
-      padding-bottom: 5px;
-    }
-
-    .course-box, .form-box {
-      background: #f9f9f9;
-      padding: 12px 15px;
-      margin: 8px 0;
-      border-radius: 6px;
-      border: 1px solid #ddd;
-    }
-
-    .btn {
-      display: inline-block;
-      margin-top: 20px;
-      padding: 12px 20px;
-      background: #0050b3;
-      color: white;
-      border-radius: 6px;
-      text-decoration: none;
-      transition: 0.2s;
-    }
-
-    .btn:hover {
-      background: #003d8a;
-    }
-
-    .form-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px;
-      border: 1px solid #ccc;
-      background: #f7f7f7;
-      border-radius: 6px;
-      margin: 10px 0;
-    }
-
-    .form-status {
-      font-weight: bold;
-    }
-
-    .view-btn {
-      padding: 8px 12px;
-      background: #0066cc;
-      color: white;
-      border-radius: 6px;
-      text-decoration: none;
-    }
-
-    .view-btn:hover {
-      background: #004c99;
-    }
-  </style>
 </head>
-
 <body>
 
-  <div class="container">
-    <h1>Your Courses & Advising Forms</h1>
+<div class="container">
+  <h1>Your Advising Dashboard</h1>
+  <button id="newFormBtn">➕ New Advising Form</button>
 
-    <!-- CURRENT COURSES -->
-    <h2>Current Courses</h2>
-    <div id="currentCourses">
-      <p>Loading...</p>
-    </div>
+  <h2>Current Courses</h2>
+  <div id="currentCourses" class="card"></div>
 
-    <!-- COMPLETED COURSES -->
-    <h2>Completed Courses</h2>
-    <div id="completedCourses">
-      <p>Loading...</p>
-    </div>
+  <h2>Courses Taken Last Term</h2>
+  <div id="takenCourses" class="card"></div>
 
-    <!-- ADVISING FORMS -->
-    <h2>Your Advising Forms</h2>
-    <div id="formsList">
-      <p>Loading...</p>
-    </div>
+  <h2>Your Advising Forms</h2>
+  <div id="formList" class="card"></div>
 
-    <a class="btn" href="advisingform.html">Create New Advising Form</a>
-  </div>
+  <button onclick="window.location.href='home.html'">Back to Home</button>
+</div>
 
-  <script>
-    const email = localStorage.getItem("userEmail");
+<script>
+const BASE_URL = "https://cs418518-f25-clean.onrender.com/advising";
 
-    /* ---------------- Load Current Courses ---------------- */
-    async function loadCurrent() {
-      const res = await fetch(`/advising/current-courses?email=${email}`);
-      const data = await res.json();
+// Email from login
+let email = localStorage.getItem("userEmail");
+if (!email) {
+  alert("You must sign in again.");
+  window.location.href = "signin.html";
+}
 
-      const box = document.getElementById("currentCourses");
-      box.innerHTML = data.length
-        ? data.map(c => `<div class="course-box">${c}</div>`).join("")
-        : "<p>No current courses.</p>";
-    }
+document.getElementById("newFormBtn").onclick = () => {
+  window.location.href = `advisingform.html`;
+};
 
-    /* ---------------- Load Completed Courses ---------------- */
-    async function loadCompleted() {
-      const res = await fetch(`/advising/taken-courses?email=${email}`);
-      const data = await res.json();
+async function fetchData(endpoint) {
+  try {
+    const res = await fetch(`${BASE_URL}/${endpoint}?email=${encodeURIComponent(email)}`);
+    if (!res.ok) throw new Error(endpoint + " failed");
+    return await res.json();
+  } catch (err) {
+    console.error(err);
+    return [];
+  }
+}
 
-      const box = document.getElementById("completedCourses");
-      box.innerHTML = data.length
-        ? data.map(c => `<div class="course-box">${c}</div>`).join("")
-        : "<p>No completed courses.</p>";
-    }
+// Load Current Courses
+async function loadCurrentCourses() {
+  const courses = await fetchData("current-courses");
+  document.getElementById("currentCourses").innerHTML =
+    courses.length ? courses.map(c => `<p>${c}</p>`).join("") : "<p>No current courses.</p>";
+}
 
-    /* ---------------- Load Advising Forms ---------------- */
-    async function loadForms() {
-      const res = await fetch(`/advising/forms?email=${email}`);
-      const data = await res.json();
+// Load Last Term Courses
+async function loadTakenCourses() {
+  const courses = await fetchData("taken-courses");
+  document.getElementById("takenCourses").innerHTML =
+    courses.length ? courses.map(c => `<p>${c}</p>`).join("") : "<p>No courses taken last term.</p>";
+}
 
-      const box = document.getElementById("formsList");
+// Load Advising Forms
+async function loadForms() {
+  const forms = await fetchData("forms");
+  document.getElementById("formList").innerHTML =
+    forms.length
+      ? forms.map(f => `
+        <p>
+          <strong>Term:</strong> ${f.current_term}<br>
+          <strong>Status:</strong> ${f.status}<br>
+          <button onclick="window.location.href='advisingform.html?formId=${f.id}'">
+            View / Edit
+          </button>
+        </p>
+      `).join("")
+      : "<p>No advising forms found.</p>";
+}
 
-      if (!data.length) {
-        box.innerHTML = "<p>No advising forms submitted yet.</p>";
-        return;
-      }
-
-      box.innerHTML = data
-        .map(
-          f => `
-          <div class="form-row">
-            <div>
-              <div><strong>Term:</strong> ${f.current_term}</div>
-              <div class="form-status"><strong>Status:</strong> ${f.status}</div>
-              <div><small>Submitted: ${new Date(f.created_at).toLocaleString()}</small></div>
-            </div>
-
-            <a class="view-btn" href="advisingform.html?id=${f.id}">
-              View / Edit
-            </a>
-          </div>
-        `
-        )
-        .join("");
-    }
-
-    loadCurrent();
-    loadCompleted();
-    loadForms();
-  </script>
+// Load all
+loadCurrentCourses();
+loadTakenCourses();
+loadForms();
+</script>
 
 </body>
 </html>
