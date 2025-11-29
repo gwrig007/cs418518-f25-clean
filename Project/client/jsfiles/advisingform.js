@@ -2,14 +2,29 @@
 //     Setup
 // ============================
 const BASE_URL = "https://cs418518-f25-clean.onrender.com";
+
 const params = new URLSearchParams(window.location.search);
 const formId = params.get("formId");
 
-const email = localStorage.getItem("userEmail");
+// Single source of truth for email
+let email = params.get("email")
+  || localStorage.getItem("userEmail")
+  || localStorage.getItem("pendingEmail");
+
+if (!email) {
+  alert("Email missing. Please sign in again.");
+  window.location.href = "signin.html";
+}
+
+// set email in the form
 document.getElementById("email").value = email;
 
+// If editing, load data
 if (formId) loadFormData();
+
+// Load courses list
 loadCourses();
+
 
 // ============================
 //     Load Courses
@@ -26,10 +41,12 @@ async function loadCourses() {
           </label><br>`
         ).join("")
       : "<p>No available courses.</p>";
+
   } catch (err) {
     console.error(err);
   }
 }
+
 
 // ============================
 //     Load Existing Form
@@ -50,10 +67,12 @@ async function loadFormData() {
         if (box) box.checked = true;
       });
     }, 300);
+
   } catch (err) {
     console.error(err);
   }
 }
+
 
 // ============================
 //     Save Form
@@ -83,7 +102,7 @@ document.getElementById("advisingForm").addEventListener("submit", async (e) => 
     if (!res.ok) throw new Error("Save failed");
 
     alert("Form saved!");
-    window.location.href = "classes.html";
+    window.location.href = "classes.html?email=" + email;
 
   } catch (err) {
     console.error(err);

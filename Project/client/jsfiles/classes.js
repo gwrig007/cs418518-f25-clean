@@ -3,9 +3,18 @@
 // ============================
 const BASE_URL = "https://cs418518-f25-clean.onrender.com";
 
-// Pull email from storage
-const email = localStorage.getItem("userEmail");
+// Get email from URL first, then localStorage
+let email = new URLSearchParams(window.location.search).get("email");
 
+if (!email) {
+  email = localStorage.getItem("userEmail");
+}
+
+if (!email) {
+  email = localStorage.getItem("pendingEmail");
+}
+
+// still missing → redirect
 if (!email) {
   alert("Error: Email not found. Please sign in again.");
   window.location.href = "signin.html";
@@ -16,13 +25,14 @@ const takenCoursesDiv = document.getElementById("takenCourses");
 const formsDiv = document.getElementById("formList");
 
 document.getElementById("newFormBtn").onclick = () => {
-  window.location.href = `advisingform.html`;
+  window.location.href = `advisingform.html?email=${email}`;
 };
 
 // Load all sections
 loadCurrentCourses();
 loadTakenCourses();
 loadForms();
+
 
 // ============================
 //     Current Courses
@@ -79,7 +89,7 @@ async function loadForms() {
           `<div class="form-card">
               <p><strong>Term:</strong> ${f.term}</p>
               <p><strong>Status:</strong> ${f.status}</p>
-              <button onclick="window.location.href='advisingform.html?formId=${f._id}'">
+              <button onclick="window.location.href='advisingform.html?formId=${f._id}&email=${email}'">
                 View / Edit
               </button>
            </div>`
