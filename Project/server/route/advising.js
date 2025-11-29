@@ -1,128 +1,140 @@
-import express from "express";
-import { pool } from "../database/connection.js";
-const router = express.Router();
+const API = "https://cs418518-f25-clean.onrender.com/advising";
 
-/* -------------------------------------------------------
-   HELPERS
-------------------------------------------------------- */
+const urlParams = new URLSearchParams(window.location.search);
+const email = urlParams.get("email");
+const advisingId = urlParams.get("id");
 
-// Convert email → user_id
-async function getUserIdFromEmail(email) {
-  const [rows] = await pool.query(
-    "SELECT u_id FROM user_information WHERE u_email = ?",
-    [email]
-  );
-  return rows.length > 0 ? rows[0].u_id : null;
+if (!email) {
+    alert("Missing email. Please sign in again.");
+    window.location.href = "signin.html";
 }
 
-/* -------------------------------------------------------
-   1️⃣ GET ADVISING HISTORY (like your screenshot)
-------------------------------------------------------- */
-router.get("/history", async (req, res) => {
-  try {
-    const { email } = req.query;
-    if (!email) return res.status(400).json({ error: "Missing email parameter" });
-
-    const userId = await getUserIdFromEmail(email);
-    if (!userId) return res.status(404).json({ error: "User not found" });
-
-    const [rows] = await pool.query(
-      `SELECT 
-         id,
-         created_at,
-         last_term,
-         last_gpa,
-         'Pending' AS status
-       FROM advising
-       WHERE user_id = ?
-       ORDER BY created_at DESC`,
-      [userId]
-    );
-
-    res.json(rows);
-  } catch (err) {
-    console.error("Error fetching advising history:", err);
-    res.status(500).json({ error: "Internal error" });
-  }
+document.addEventListener("DOMContentLoaded", () => {
+    if (advisingId) {
+        loadExistingForm();
+        loadCourses();
+    }
 });
 
-/* -------------------------------------------------------
-   2️⃣ CREATE NEW ADVISING RECORD
-------------------------------------------------------- */
-router.post("/create", async (req, res) => {
-  try {
-    const { email, last_term, last_gpa } = req.body;
+// ------------------------------
+// Load existing advising form
+// ------------------------------
+async function loadExistingForm() {
+    try {
+        const res = await fetch(`${API}/history?email=${email}`);
+        const forms = await res.json();
 
-    if (!email || !last_term)
-      return res.status(400).json({ error: "Missing fields" });
+        const thisForm = forms.find(f => String(f.id) === String(advisingId));
+        if (!thisForm) return;
 
-    const userId = await getUserIdFromEmail(email);
-    if (!userId) return res.status(404).json({ error: "User not found" });
+        document.getElementById("lastTerm").value = thisForm.last_term;
+        document.getElementById("lastGpa").value = thisForm.last_gpa;
+        document.getElementById("statusText").innerText = thisForm.status;
 
-    const [result] = await pool.query(
-      `INSERT INTO advising (user_id, last_term, last_gpa, created_at)
-       VALUES (?, ?, ?, NOW())`,
-      [userId, last_term, last_gpa]
-    );
+    } catch (err) {
+        console.error("Error loading form:", err);
+    }
+}
 
-    res.json({ success: true, advising_id: result.insertId });
-  } catch (err) {
-    console.error("Error creating advising record:", err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+// ------------------------------
+// Load advising courses for this form
+// ------------------------------
+async function loadCourses() {
+    if (!advisingId) return;
 
-/* -------------------------------------------------------
-   3️⃣ GET COURSES FOR AN ADVISING RECORD
-------------------------------------------------------- */
-router.get("/courses", async (req, res) => {
-  try {
-    const { advising_id } = req.query;
-    if (!advising_id)
-      return res.status(400).json({ error: "Missing advising_id" });
+    const container = document.getElementById("courseList");
+    container.innerHTML = "Loading...";
 
-    const [rows] = await pool.query(
-      `SELECT 
-          id,
-          course_level,
-          course_name,
-          current_term,
-          status
-       FROM advising_courses
-       WHERE advising_id = ?
-       ORDER BY course_level ASC`,
-      [advising_id]
-    );
+    try {
+        const res = await fetch(`${API}/courses?advising_id=${advisingId}`);
+        const courses = await res.json();
 
-    res.json(rows);
-  } catch (err) {
-    console.error("Error fetching advising courses:", err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+        if (!courses.length) {
+            container.innerHTML = "<p>No courses added yet.</p>";
+            return;
+        }
 
-/* -------------------------------------------------------
-   4️⃣ ADD A COURSE TO AN ADVISING SESSION
-------------------------------------------------------- */
-router.post("/add-course", async (req, res) => {
-  try {
-    const { advising_id, course_level, course_name, current_term } = req.body;
+        container.innerHTML = courses
+            .map(c => `
+                <div class="course-item">
+                    <strong>${c.course_level}</strong> — ${c.course_name}
+                    <span class="status-tag">${c.status}</span>
+                </div>
+            `)
+            .join("");
 
-    if (!advising_id || !course_level || !course_name || !current_term)
-      return res.status(400).json({ error: "Missing required fields" });
+    } catch (err) {
+        console.error(err);
+        container.innerHTML = "<p>Error loading courses.</p>";
+    }
+}
 
-    const [result] = await pool.query(
-      `INSERT INTO advising_courses 
-          (advising_id, course_level, course_name, current_term, status)
-       VALUES (?, ?, ?, ?, 'Pending')`,
-      [advising_id, course_level, course_name, current_term]
-    );
+// ------------------------------
+// Create new advising form
+// ------------------------------
+async function createForm() {
+    const last_term = document.getElementById("lastTerm").value;
+    const last_gpa = document.getElementById("lastGpa").value;
 
-    res.json({ success: true, id: result.insertId });
-  } catch (err) {
-    console.error("Error adding course:", err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+    if (!last_term) return alert("Enter last term");
 
-export default router;
+    try {
+        const res = await fetch(`${API}/create`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, last_term, last_gpa })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            window.location.href = `advisingform.html?id=${data.advising_id}&email=${email}`;
+        } else {
+            alert("Failed to create form.");
+        }
+
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+// ------------------------------
+// Add a course
+// ------------------------------
+async function addCourse() {
+    const course_level = document.getElementById("courseLevel").value;
+    const course_name = document.getElementById("courseName").value;
+    const current_term = document.getElementById("currentTerm").value;
+
+    if (!advisingId) return alert("No advising form loaded.");
+
+    try {
+        const res = await fetch(`${API}/add-course`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                advising_id: advisingId,
+                course_level,
+                course_name,
+                current_term
+            })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            loadCourses();
+            document.getElementById("courseLevel").value = "";
+            document.getElementById("courseName").value = "";
+            document.getElementById("currentTerm").value = "";
+        }
+
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+// ------------------------------
+// Button bindings
+// ------------------------------
+document.getElementById("saveFormBtn")?.addEventListener("click", createForm);
+document.getElementById("addCourseBtn")?.addEventListener("click", addCourse);
