@@ -2,149 +2,127 @@ import express from "express";
 import { pool } from "../database/connection.js";
 const router = express.Router();
 
-// ✅ Get all advising forms for a user
-router.get("/forms", async (req, res) => {
+/* -------------------------------------------------------
+   HELPERS
+------------------------------------------------------- */
+
+// Convert email → user_id
+async function getUserIdFromEmail(email) {
+  const [rows] = await pool.query(
+    "SELECT u_id FROM user_information WHERE u_email = ?",
+    [email]
+  );
+  return rows.length > 0 ? rows[0].u_id : null;
+}
+
+/* -------------------------------------------------------
+   1️⃣ GET ADVISING HISTORY (like your screenshot)
+------------------------------------------------------- */
+router.get("/history", async (req, res) => {
   try {
     const { email } = req.query;
-    if (!email) {
-      return res.status(400).json({ error: "Missing email parameter" });
-    }
+    if (!email) return res.status(400).json({ error: "Missing email parameter" });
+
+    const userId = await getUserIdFromEmail(email);
+    if (!userId) return res.status(404).json({ error: "User not found" });
 
     const [rows] = await pool.query(
-      "SELECT id, current_term, last_gpa, status, created_at FROM advising_forms WHERE email = ? ORDER BY created_at DESC",
-      [email]
+      `SELECT 
+         id,
+         created_at,
+         last_term,
+         last_gpa,
+         'Pending' AS status
+       FROM advising
+       WHERE user_id = ?
+       ORDER BY created_at DESC`,
+      [userId]
     );
 
     res.json(rows);
   } catch (err) {
-    console.error("Error fetching advising forms:", err);
-    res.status(500).json({ error: "Internal server error" });
+    console.error("Error fetching advising history:", err);
+    res.status(500).json({ error: "Internal error" });
   }
 });
 
-// ✅ Get a single advising form by ID
-router.get("/form/:id", async (req, res) => {
+/* -------------------------------------------------------
+   2️⃣ CREATE NEW ADVISING RECORD
+------------------------------------------------------- */
+router.post("/create", async (req, res) => {
   try {
-    const { id } = req.params;
-    const [rows] = await pool.query("SELECT * FROM advising_forms WHERE id = ?", [id]);
+    const { email, last_term, last_gpa } = req.body;
 
-    if (rows.length === 0) {
-      return res.status(404).json({ error: "Advising form not found" });
-    }
+    if (!email || !last_term)
+      return res.status(400).json({ error: "Missing fields" });
 
-    res.json(rows[0]);
-  } catch (err) {
-    console.error("Error fetching advising form:", err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-// ✅ Create new advising form
-router.post("/form", async (req, res) => {
-  try {
-    const { email, current_term, last_gpa, status } = req.body;
-
-    if (!email || !current_term) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
+    const userId = await getUserIdFromEmail(email);
+    if (!userId) return res.status(404).json({ error: "User not found" });
 
     const [result] = await pool.query(
-      "INSERT INTO advising_forms (email, current_term, last_gpa, status, created_at) VALUES (?, ?, ?, ?, NOW())",
-      [email, current_term, last_gpa || null, status || "Pending"]
+      `INSERT INTO advising (user_id, last_term, last_gpa, created_at)
+       VALUES (?, ?, ?, NOW())`,
+      [userId, last_term, last_gpa]
+    );
+
+    res.json({ success: true, advising_id: result.insertId });
+  } catch (err) {
+    console.error("Error creating advising record:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/* -------------------------------------------------------
+   3️⃣ GET COURSES FOR AN ADVISING RECORD
+------------------------------------------------------- */
+router.get("/courses", async (req, res) => {
+  try {
+    const { advising_id } = req.query;
+    if (!advising_id)
+      return res.status(400).json({ error: "Missing advising_id" });
+
+    const [rows] = await pool.query(
+      `SELECT 
+          id,
+          course_level,
+          course_name,
+          current_term,
+          status
+       FROM advising_courses
+       WHERE advising_id = ?
+       ORDER BY course_level ASC`,
+      [advising_id]
+    );
+
+    res.json(rows);
+  } catch (err) {
+    console.error("Error fetching advising courses:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/* -------------------------------------------------------
+   4️⃣ ADD A COURSE TO AN ADVISING SESSION
+------------------------------------------------------- */
+router.post("/add-course", async (req, res) => {
+  try {
+    const { advising_id, course_level, course_name, current_term } = req.body;
+
+    if (!advising_id || !course_level || !course_name || !current_term)
+      return res.status(400).json({ error: "Missing required fields" });
+
+    const [result] = await pool.query(
+      `INSERT INTO advising_courses 
+          (advising_id, course_level, course_name, current_term, status)
+       VALUES (?, ?, ?, ?, 'Pending')`,
+      [advising_id, course_level, course_name, current_term]
     );
 
     res.json({ success: true, id: result.insertId });
   } catch (err) {
-    console.error("Error creating advising form:", err);
+    console.error("Error adding course:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
-
-// ✅ Update existing advising form
-router.put("/form/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { current_term, last_gpa, status } = req.body;
-
-    const [result] = await pool.query(
-      "UPDATE advising_forms SET current_term = ?, last_gpa = ?, status = ? WHERE id = ?",
-      [current_term, last_gpa, status, id]
-    );
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "Form not found or unchanged" });
-    }
-
-    res.json({ success: true });
-  } catch (err) {
-    console.error("Error updating advising form:", err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-// ✅ Get current courses for a user's advising record
-router.get("/current-courses", async (req, res) => {
-  try {
-    const { email } = req.query;
-
-    if (!email) {
-      return res.status(400).json({ error: "Missing email parameter" });
-    }
-
-    // FIXED: use correct column name (u_email)
-    const [records] = await pool.query(
-      "SELECT id FROM advising_records WHERE u_email = ? ORDER BY created_at DESC LIMIT 1",
-      [email]
-    );
-
-    if (records.length === 0) {
-      return res.json([]); // return empty array instead of 404
-    }
-
-    const recordId = records[0].id;
-
-    // Fetch all current courses tied to that record
-    const [courses] = await pool.query(
-      "SELECT id, course_level, course_name FROM advising_courses WHERE record_id = ?",
-      [recordId]
-    );
-
-    res.json(courses);
-  } catch (err) {
-    console.error("Error loading current courses:", err);
-    res.status(500).json({ error: "Unable to fetch current courses" });
-  }
-});
-
-
-// ✅ Get taken (previous) courses for a user
-router.get("/taken-courses", async (req, res) => {
-  try {
-    const { email } = req.query;
-
-    if (!email) {
-      return res.status(400).json({ error: "Missing email parameter" });
-    }
-
-    const [courses] = await pool.query(
-      `SELECT 
-        id,
-        term AS course_term,
-        course_level AS course_code,
-        course_name,
-        grade
-      FROM taken_courses
-      WHERE email = ?
-      ORDER BY term DESC`,
-      [email]
-    );
-
-    res.json(courses);
-  } catch (err) {
-    console.error("Error fetching taken courses:", err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
 
 export default router;
