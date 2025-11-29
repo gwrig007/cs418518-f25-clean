@@ -8,17 +8,18 @@ document.addEventListener("DOMContentLoaded", () => {
     const password = document.getElementById("password").value;
 
     try {
-      const res = await fetch("http://localhost:8080/user/login", {
+      const res = await fetch("https://cs418518-f25-clean.onrender.com/user/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password })
       });
 
       const data = await res.json();
 
       if (res.ok) {
-        // ✅ Save email before redirect
-        localStorage.setItem("pendingEmail", email);
+        // ✅ Save email for rest of site
+        localStorage.setItem("userEmail", email);
+
         alert(data.message);
         window.location.href = "verify-otp.html";
       } else {

@@ -1,16 +1,14 @@
 // ============================
-//     Load URL Params
+//     Setup
 // ============================
+const BASE_URL = "https://cs418518-f25-clean.onrender.com";
 const params = new URLSearchParams(window.location.search);
-const email = params.get("email");
 const formId = params.get("formId");
 
+const email = localStorage.getItem("userEmail");
 document.getElementById("email").value = email;
 
-// When editing, load existing form
 if (formId) loadFormData();
-
-// Always load course list
 loadCourses();
 
 // ============================
@@ -18,52 +16,42 @@ loadCourses();
 // ============================
 async function loadCourses() {
   try {
-    const res = await fetch(`/advising/get-current-courses?email=${email}`);
-    if (!res.ok) throw new Error("Failed to load courses.");
-
+    const res = await fetch(`${BASE_URL}/advising/get-current-courses?email=${email}`);
     const courses = await res.json();
 
-    const courseListDiv = document.getElementById("courseList");
-
-    courseListDiv.innerHTML = courses.length
-      ? courses.map(c =>
-          `<label>
-             <input type="checkbox" name="selectedCourses" value="${c}">
-             ${c}
-           </label><br>`
+    document.getElementById("courseList").innerHTML = courses.length
+      ? courses.map(c => `
+          <label>
+            <input type="checkbox" name="selectedCourses" value="${c}"> ${c}
+          </label><br>`
         ).join("")
       : "<p>No available courses.</p>";
-
-  } catch (error) {
-    console.error(error);
+  } catch (err) {
+    console.error(err);
   }
 }
 
 // ============================
-//     Load Existing Form Data
+//     Load Existing Form
 // ============================
 async function loadFormData() {
   try {
-    const res = await fetch(`/advising/get-form-by-id?formId=${formId}`);
-    if (!res.ok) throw new Error("Failed to load form.");
-
+    const res = await fetch(`${BASE_URL}/advising/get-form-by-id?formId=${formId}`);
     const form = await res.json();
 
-    document.getElementById("formId").value = form.id;
-    document.getElementById("currentTerm").value = form.currentTerm;
-    document.getElementById("lastGPA").value = form.lastGPA;
+    document.getElementById("formId").value = form._id;
+    document.getElementById("currentTerm").value = form.term;
+    document.getElementById("lastGPA").value = form.lastGpa;
     document.getElementById("status").value = form.status;
 
-    // Pre-check selected courses AFTER course list loads
     setTimeout(() => {
-      form.selectedCourses.forEach(course => {
+      form.courses.forEach(course => {
         const box = document.querySelector(`input[value="${course}"]`);
         if (box) box.checked = true;
       });
     }, 300);
-
-  } catch (error) {
-    console.error(error);
+  } catch (err) {
+    console.error(err);
   }
 }
 
@@ -79,26 +67,26 @@ document.getElementById("advisingForm").addEventListener("submit", async (e) => 
   const body = {
     formId,
     email,
-    currentTerm: document.getElementById("currentTerm").value,
-    lastGPA: document.getElementById("lastGPA").value,
+    term: document.getElementById("currentTerm").value,
+    lastGpa: document.getElementById("lastGPA").value,
     status: document.getElementById("status").value,
-    selectedCourses
+    courses: selectedCourses
   };
 
   try {
-    const res = await fetch("/advising/save-form", {
+    const res = await fetch(`${BASE_URL}/advising/save-form`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body)
     });
 
-    if (!res.ok) throw new Error("Failed to save form");
+    if (!res.ok) throw new Error("Save failed");
 
-    alert("Form saved successfully!");
-    window.location.href = `classes.html?email=${email}`;
+    alert("Form saved!");
+    window.location.href = "classes.html";
 
-  } catch (error) {
-    console.error("Error saving form:", error);
+  } catch (err) {
+    console.error(err);
     alert("Error saving form.");
   }
 });

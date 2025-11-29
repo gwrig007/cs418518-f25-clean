@@ -1,15 +1,22 @@
 // ============================
-//     Page Setup
+//     Setup
 // ============================
-const params = new URLSearchParams(window.location.search);
-const email = params.get("email");
+const BASE_URL = "https://cs418518-f25-clean.onrender.com";
+
+// Pull email from storage
+const email = localStorage.getItem("userEmail");
+
+if (!email) {
+  alert("Error: Email not found. Please sign in again.");
+  window.location.href = "signin.html";
+}
 
 const currentCoursesDiv = document.getElementById("currentCourses");
 const takenCoursesDiv = document.getElementById("takenCourses");
 const formsDiv = document.getElementById("formList");
 
 document.getElementById("newFormBtn").onclick = () => {
-  window.location.href = `advisingform.html?email=${email}`;
+  window.location.href = `advisingform.html`;
 };
 
 // Load all sections
@@ -18,11 +25,11 @@ loadTakenCourses();
 loadForms();
 
 // ============================
-//     Load Current Courses
+//     Current Courses
 // ============================
 async function loadCurrentCourses() {
   try {
-    const res = await fetch(`/advising/get-current-courses?email=${email}`);
+    const res = await fetch(`${BASE_URL}/advising/get-current-courses?email=${email}`);
     if (!res.ok) throw new Error("Failed to load current courses.");
 
     const data = await res.json();
@@ -38,11 +45,11 @@ async function loadCurrentCourses() {
 }
 
 // ============================
-//     Load Taken Courses
+//     Taken Courses
 // ============================
 async function loadTakenCourses() {
   try {
-    const res = await fetch(`/advising/get-taken-courses?email=${email}`);
+    const res = await fetch(`${BASE_URL}/advising/get-taken-courses?email=${email}`);
     if (!res.ok) throw new Error("Failed to load taken courses.");
 
     const data = await res.json();
@@ -58,11 +65,11 @@ async function loadTakenCourses() {
 }
 
 // ============================
-//     Load Advising Forms
+//     Advising Forms
 // ============================
 async function loadForms() {
   try {
-    const res = await fetch(`/advising/get-advising-forms?email=${email}`);
+    const res = await fetch(`${BASE_URL}/advising/get-advising-forms?email=${email}`);
     if (!res.ok) throw new Error("Failed to load advising forms.");
 
     const forms = await res.json();
@@ -70,9 +77,9 @@ async function loadForms() {
     formsDiv.innerHTML = forms.length
       ? forms.map(f =>
           `<div class="form-card">
-              <p><strong>Term:</strong> ${f.currentTerm}</p>
+              <p><strong>Term:</strong> ${f.term}</p>
               <p><strong>Status:</strong> ${f.status}</p>
-              <button onclick="window.location.href='advisingform.html?email=${email}&formId=${f.id}'">
+              <button onclick="window.location.href='advisingform.html?formId=${f._id}'">
                 View / Edit
               </button>
            </div>`
