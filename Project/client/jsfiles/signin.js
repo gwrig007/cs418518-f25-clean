@@ -17,8 +17,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = await res.json();
 
       if (res.ok) {
-        // ✅ Save email for rest of site
-        localStorage.setItem("userEmail", email);
+        // 🔥 MUST USE pendingEmail so verify-otp.js can read it
+        localStorage.setItem("pendingEmail", email);
 
         alert(data.message);
         window.location.href = "verify-otp.html";
