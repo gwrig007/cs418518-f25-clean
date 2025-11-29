@@ -26,25 +26,39 @@
 </div>
 
 <script>
-const email = new URLSearchParams(window.location.search).get("email");
+// ======================================================
+//  Get the logged-in user's email from localStorage
+// ======================================================
+const email = localStorage.getItem("userEmail");
 
+if (!email) {
+  alert("You must sign in again.");
+  window.location.href = "signin.html";
+}
+
+// Button to open advising form
 document.getElementById("newFormBtn").onclick = () => {
-  window.location.href = `advisingform.html?email=${email}`;
+  window.location.href = `advisingform.html`;
 };
 
+// Load dashboard data
 loadCurrentCourses();
 loadTakenCourses();
 loadForms();
 
+// ======================================================
+//  CURRENT COURSES
+// ======================================================
 async function loadCurrentCourses() {
   try {
-    const res = await fetch(`/advising/get-current-courses?email=${email}`);
+    const res = await fetch(`/advising/current-courses?email=${email}`);
     if (!res.ok) throw new Error("Unable to fetch current courses.");
 
     const courses = await res.json();
     const div = document.getElementById("currentCourses");
-    div.innerHTML = courses.length 
-      ? courses.map(c => `<p>${c}</p>`).join("") 
+
+    div.innerHTML = courses.length
+      ? courses.map(c => `<p>${c}</p>`).join("")
       : "<p>No current courses.</p>";
 
   } catch (err) {
@@ -52,15 +66,19 @@ async function loadCurrentCourses() {
   }
 }
 
+// ======================================================
+//  TAKEN COURSES
+// ======================================================
 async function loadTakenCourses() {
   try {
-    const res = await fetch(`/advising/get-taken-courses?email=${email}`);
+    const res = await fetch(`/advising/taken-courses?email=${email}`);
     if (!res.ok) throw new Error("Unable to fetch taken courses.");
 
     const courses = await res.json();
     const div = document.getElementById("takenCourses");
-    div.innerHTML = courses.length 
-      ? courses.map(c => `<p>${c}</p>`).join("") 
+
+    div.innerHTML = courses.length
+      ? courses.map(c => `<p>${c}</p>`).join("")
       : "<p>No courses taken last term.</p>";
 
   } catch (err) {
@@ -68,9 +86,12 @@ async function loadTakenCourses() {
   }
 }
 
+// ======================================================
+//  ADVISING FORMS LIST
+// ======================================================
 async function loadForms() {
   try {
-    const res = await fetch(`/advising/get-advising-forms?email=${email}`);
+    const res = await fetch(`/advising/forms?email=${email}`);
     if (!res.ok) throw new Error("Unable to fetch forms.");
 
     const forms = await res.json();
@@ -79,9 +100,9 @@ async function loadForms() {
     div.innerHTML = forms.length
       ? forms.map(f =>
         `<p>
-          <strong>Term:</strong> ${f.currentTerm}<br>
+          <strong>Term:</strong> ${f.current_term}<br>
           <strong>Status:</strong> ${f.status}<br>
-          <button onclick="window.location.href='advisingform.html?email=${email}&formId=${f.id}'">
+          <button onclick="window.location.href='advisingform.html?formId=${f.id}'">
             View / Edit
           </button>
         </p>`

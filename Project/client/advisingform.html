@@ -47,7 +47,7 @@ loadCourses();
 
 async function loadCourses() {
   try {
-    const res = await fetch(`/advising/get-current-courses?email=${email}`);
+    const res = await fetch(`/advising/current-courses?email=${email}`);
     if (!res.ok) throw new Error("Unable to fetch courses.");
 
     const courses = await res.json();
