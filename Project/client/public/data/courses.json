@@ -1,0 +1,9 @@
+[
+  { "name": "MATH 101", "level": "100" },
+  { "name": "ENG 101", "level": "100" },
+  { "name": "CS 201", "level": "200" },
+  { "name": "CS 301", "level": "300" },
+  { "name": "BIO 110", "level": "100" },
+  { "name": "HIST 101", "level": "100" },
+  { "name": "PSY 200", "level": "200" }
+]

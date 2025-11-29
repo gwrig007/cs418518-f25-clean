@@ -3,227 +3,89 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>New Advising Form | ODU Course Portal</title>
+  <title>Advising Form</title>
   <link rel="stylesheet" href="style.css" />
-  <style>
-    body {
-      font-family: "Segoe UI", Arial, sans-serif;
-      background-color: #f2f5fa;
-      margin: 0;
-      padding: 0;
-    }
-    header {
-      background-color: #003366;
-      color: white;
-      padding: 1rem;
-      text-align: center;
-    }
-    .container {
-      max-width: 900px;
-      margin: 2rem auto;
-      background: white;
-      border-radius: 12px;
-      padding: 2rem;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-    h2 {
-      text-align: center;
-      color: #003366;
-    }
-    label {
-      display: block;
-      font-weight: bold;
-      margin-top: 1rem;
-    }
-    select, input {
-      width: 100%;
-      padding: 0.5rem;
-      margin-top: 0.5rem;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-    }
-    button {
-      background-color: #003366;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      padding: 0.75rem 1.5rem;
-      font-size: 1rem;
-      cursor: pointer;
-      display: block;
-      margin: 1.5rem auto 0;
-    }
-    button:hover {
-      background-color: #00509e;
-    }
-    table {
-      width: 100%;
-      margin-top: 1rem;
-      border-collapse: collapse;
-    }
-    th, td {
-      padding: 0.75rem;
-      border-bottom: 1px solid #ddd;
-    }
-    th {
-      background: #003366;
-      color: white;
-    }
-    .remove-btn {
-      background-color: #b91c1c;
-      padding: 0.3rem 0.7rem;
-      border-radius: 5px;
-    }
-    .remove-btn:hover {
-      background-color: #dc2626;
-    }
-  </style>
 </head>
-
 <body>
-  <header>
-    <h1>New Advising Form</h1>
-  </header>
 
-  <div class="container">
-    <h2>Plan Your Courses</h2>
+<div class="container">
+  <h1>Course Advising Form</h1>
 
-    <p><strong>Email:</strong> <span id="studentEmail"></span></p>
+  <form id="advisingForm">
 
-    <label for="courseSelect">Select Course:</label>
-    <select id="courseSelect">
-      <option value="">-- Select a Course --</option>
-    </select>
+    <input type="hidden" id="formId" />
 
-    <label for="levelInput">Course Level:</label>
-    <input type="text" id="levelInput" placeholder="e.g., 300, 400, Graduate" />
+    <label>Email</label>
+    <input type="email" id="email" readonly />
 
-    <button id="addCourseBtn">+ Add Course</button>
+    <label>Current Term</label>
+    <input type="text" id="currentTerm" required />
 
-    <h3>Selected Courses</h3>
-    <table>
-      <thead>
-        <tr>
-          <th>Course Name</th>
-          <th>Level</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody id="courseTableBody">
-        <tr><td colspan="3" style="text-align:center;">No courses added yet.</td></tr>
-      </tbody>
-    </table>
+    <label>Last GPA</label>
+    <input type="number" id="lastGPA" step="0.01" />
 
-    <button id="submitFormBtn">Submit Advising Form</button>
-    <button onclick="window.location.href='classes.html'" style="background:#6b7280;">Back</button>
-  </div>
+    <label>Status</label>
+    <input type="text" id="status" readonly />
 
-  <script>
-    const emailSpan = document.getElementById("studentEmail");
-    const email = new URLSearchParams(window.location.search).get("email") || localStorage.getItem("userEmail");
+    <h3>Select Courses</h3>
+    <p class="note">Courses taken last term will be disabled.</p>
 
-    if (!email) {
-      alert("No email found. Please log in again.");
-      window.location.href = "login.html";
-    }
+    <div id="courseList"></div>
 
-    emailSpan.textContent = email;
-    const courseSelect = document.getElementById("courseSelect");
-    const tableBody = document.getElementById("courseTableBody");
-    let addedCourses = [];
+    <button type="submit" id="saveBtn">Save Advising Form</button>
+    <button type="button" onclick="window.location.href='classes.html?email=' + email.value">Back</button>
+  </form>
+</div>
 
-    // Load available courses from DB
-    async function loadAvailableCourses() {
-      try {
-        const res = await fetch(`https://cs418518-f25-clean.onrender.com/advising/current-courses?email=${encodeURIComponent(email)}`);
-        const data = await res.json();
+<script>
+const params = new URLSearchParams(window.location.search);
+const email = params.get("email");
+const formId = params.get("formId");
+document.getElementById("email").value = email;
 
-        if (!Array.isArray(data) || data.length === 0) {
-          courseSelect.innerHTML = `<option>No courses found in database</option>`;
-          return;
-        }
+loadCourses();
 
-        courseSelect.innerHTML = `<option value="">-- Select a Course --</option>`;
-        data.forEach(course => {
-          const opt = document.createElement("option");
-          opt.value = course.course_name;
-          opt.textContent = course.course_name;
-          courseSelect.appendChild(opt);
-        });
-      } catch (err) {
-        console.error("Error loading available courses:", err);
-      }
-    }
+async function loadCourses() {
+  try {
+    const res = await fetch(`/advising/get-current-courses?email=${email}`);
+    if (!res.ok) throw new Error("Unable to fetch courses.");
 
-    // Add course locally to table
-    document.getElementById("addCourseBtn").addEventListener("click", () => {
-      const courseName = courseSelect.value;
-      const courseLevel = document.getElementById("levelInput").value.trim();
+    const courses = await res.json();
 
-      if (!courseName) return alert("Please select a course.");
-      if (!courseLevel) return alert("Please enter course level.");
+    document.getElementById("courseList").innerHTML = courses.length
+      ? courses.map(c =>
+          `<label>
+             <input type="checkbox" name="selectedCourses" value="${c}" />
+             ${c}
+           </label><br>`
+        ).join("")
+      : "<p>No available courses.</p>";
 
-      // Prevent duplicates
-      if (addedCourses.some(c => c.course_name === courseName)) {
-        return alert("This course has already been added.");
-      }
+  } catch (err) {
+    console.error("Error loading current courses:", err);
+  }
+}
 
-      addedCourses.push({ course_name: courseName, course_level: courseLevel });
-      updateTable();
-    });
+document.getElementById("advisingForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
 
-    // Update course table
-    function updateTable() {
-      tableBody.innerHTML = "";
-      addedCourses.forEach((c, i) => {
-        const row = document.createElement("tr");
-        row.innerHTML = `
-          <td>${c.course_name}</td>
-          <td>${c.course_level}</td>
-          <td><button class="remove-btn" onclick="removeCourse(${i})">Remove</button></td>
-        `;
-        tableBody.appendChild(row);
-      });
+  const selectedCourses = [...document.querySelectorAll("input[name='selectedCourses']:checked")]
+    .map(c => c.value);
 
-      if (addedCourses.length === 0) {
-        tableBody.innerHTML = `<tr><td colspan="3" style="text-align:center;">No courses added yet.</td></tr>`;
-      }
-    }
+  const data = {
+    formId,
+    email,
+    currentTerm: document.getElementById("currentTerm").value,
+    lastGPA: document.getElementById("lastGPA").value,
+    status: document.getElementById("status").value,
+    selectedCourses
+  };
 
-    // Remove course from list
-    function removeCourse(index) {
-      addedCourses.splice(index, 1);
-      updateTable();
-    }
+  console.log("Saving:", data);
 
-    // Submit advising form (send each course)
-    document.getElementById("submitFormBtn").addEventListener("click", async () => {
-      if (addedCourses.length === 0) return alert("Please add at least one course.");
+  alert("Form saved (frontend only — make sure backend route exists).");
+});
+</script>
 
-      for (const course of addedCourses) {
-        try {
-          const res = await fetch("https://cs418518-f25-clean.onrender.com/advising/add-course", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              email,
-              course_name: course.course_name,
-              course_level: course.course_level
-            })
-          });
-
-          const data = await res.json();
-          console.log("Added:", data);
-        } catch (err) {
-          console.error("Error submitting course:", err);
-        }
-      }
-
-      alert("Advising form submitted successfully!");
-      window.location.href = `classes.html?email=${encodeURIComponent(email)}`;
-    });
-
-    loadAvailableCourses();
-  </script>
 </body>
 </html>

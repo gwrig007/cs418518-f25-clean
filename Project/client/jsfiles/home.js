@@ -8,27 +8,32 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   try {
-    // Fetch user data from backend
-    const res = await fetch(`http://localhost:8080/user/profile?email=${email}`);
+    // Fetch user data from backend (UPDATED URL)
+    const res = await fetch(`https://cs418518-f25-clean.onrender.com/user/profile?email=${email}`);
     const data = await res.json();
 
     if (res.ok) {
       const firstName = data.u_first_name || "";
       const lastName = data.u_last_name || "";
-      document.getElementById(
-        "welcomeMessage"
-      ).textContent = `Welcome, ${firstName} ${lastName}!`;
+      document.getElementById("welcomeMessage").textContent =
+        `Welcome, ${firstName} ${lastName}!`;
     } else {
-      alert(data.message);
+      console.error(data);
+      alert("Unable to load profile.");
     }
   } catch (err) {
-    console.error(err);
+    console.error("Error loading user data:", err);
     alert("Error loading user data.");
   }
 
-  // Profile button
+  // Navigate to Profile
   document.getElementById("profileBtn").addEventListener("click", () => {
-    window.location.href = "profile.html";
+    window.location.href = `profile.html?email=${email}`;
+  });
+
+  // Navigate to Course Advising Page
+  document.getElementById("courseAdvisingBtn").addEventListener("click", () => {
+    window.location.href = `classes.html?email=${email}`;
   });
 
   // Logout
@@ -37,4 +42,3 @@ document.addEventListener("DOMContentLoaded", async () => {
     window.location.href = "signin.html";
   });
 });
-

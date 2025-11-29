@@ -3,210 +3,96 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>My Course Advising | ODU Portal</title>
+  <title>Course Advising Dashboard</title>
   <link rel="stylesheet" href="style.css" />
-  <style>
-    body {
-      font-family: "Segoe UI", Arial, sans-serif;
-      background-color: #f4f6fa;
-      margin: 0;
-      padding: 0;
-    }
-
-    header {
-      background-color: #003366;
-      color: white;
-      padding: 1rem;
-      text-align: center;
-    }
-
-    .container {
-      max-width: 900px;
-      margin: 2rem auto;
-      background: white;
-      border-radius: 12px;
-      padding: 2rem;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-
-    h2 {
-      text-align: center;
-      color: #003366;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 1.5rem;
-    }
-
-    th, td {
-      padding: 0.75rem;
-      border-bottom: 1px solid #d1d5db;
-      text-align: left;
-    }
-
-    th {
-      background-color: #00539B;
-      color: white;
-    }
-
-    button {
-      background-color: #003366;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      padding: 0.5rem 1rem;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background-color: #00509e;
-    }
-
-    .logout {
-      text-align: right;
-      margin-bottom: 1rem;
-    }
-
-    .logout button {
-      background-color: #b91c1c;
-    }
-
-    .logout button:hover {
-      background-color: #dc2626;
-    }
-  </style>
 </head>
 <body>
-  <header>
-    <h1>Course Advising Portal</h1>
-  </header>
 
-  <div class="container">
-    <div class="logout">
-      <button id="logoutBtn">Logout</button>
-    </div>
+<div class="container">
+  <h1>Your Advising Dashboard</h1>
 
-    <h2>Your Advising Forms</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Term</th>
-          <th>Last GPA</th>
-          <th>Status</th>
-          <th>Created At</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody id="tableBody">
-        <tr><td colspan="5">Loading...</td></tr>
-      </tbody>
-    </table>
+  <button id="newFormBtn">➕ New Advising Form</button>
 
-    <button id="newFormBtn">+ New Advising Form</button>
-  </div>
+  <h2>Current Courses</h2>
+  <div id="currentCourses" class="card"></div>
+
+  <h2>Courses Taken Last Term</h2>
+  <div id="takenCourses" class="card"></div>
+
+  <h2>Your Advising Forms</h2>
+  <div id="formList" class="card"></div>
+
+  <button onclick="window.location.href='home.html'">Back to Home</button>
+</div>
+
 <script>
-  const API_BASE = "https://cs418518-f25-clean.onrender.com";
+const email = new URLSearchParams(window.location.search).get("email");
 
-  // --- Get email ---
-  function getEmail() {
-    const params = new URLSearchParams(window.location.search);
-    const emailFromURL = params.get("email");
-    if (emailFromURL) {
-      localStorage.setItem("userEmail", emailFromURL);
-      return emailFromURL;
-    }
-    return localStorage.getItem("userEmail");
+document.getElementById("newFormBtn").onclick = () => {
+  window.location.href = `advisingform.html?email=${email}`;
+};
+
+loadCurrentCourses();
+loadTakenCourses();
+loadForms();
+
+async function loadCurrentCourses() {
+  try {
+    const res = await fetch(`/advising/get-current-courses?email=${email}`);
+    if (!res.ok) throw new Error("Unable to fetch current courses.");
+
+    const courses = await res.json();
+    const div = document.getElementById("currentCourses");
+    div.innerHTML = courses.length 
+      ? courses.map(c => `<p>${c}</p>`).join("") 
+      : "<p>No current courses.</p>";
+
+  } catch (err) {
+    console.error("Error loading current courses:", err);
   }
+}
 
-  const email = getEmail();
+async function loadTakenCourses() {
+  try {
+    const res = await fetch(`/advising/get-taken-courses?email=${email}`);
+    if (!res.ok) throw new Error("Unable to fetch taken courses.");
 
-  if (!email) {
-    alert("No email found. Please log in again.");
-    window.location.href = "login.html";
+    const courses = await res.json();
+    const div = document.getElementById("takenCourses");
+    div.innerHTML = courses.length 
+      ? courses.map(c => `<p>${c}</p>`).join("") 
+      : "<p>No courses taken last term.</p>";
+
+  } catch (err) {
+    console.error("Error loading taken courses:", err);
   }
+}
 
-  // --- Load advising forms ---
-  async function loadAdvisingForms() {
-    const tableBody = document.getElementById("tableBody");
+async function loadForms() {
+  try {
+    const res = await fetch(`/advising/get-advising-forms?email=${email}`);
+    if (!res.ok) throw new Error("Unable to fetch forms.");
 
-    try {
-      const response = await fetch(`${API_BASE}/advising/forms?email=${encodeURIComponent(email)}`);
-      if (!response.ok) throw new Error("Unable to fetch forms.");
-      const forms = await response.json();
+    const forms = await res.json();
+    const div = document.getElementById("formList");
 
-      if (!Array.isArray(forms) || forms.length === 0) {
-        tableBody.innerHTML = "<tr><td colspan='5'>No advising records found.</td></tr>";
-        return;
-      }
+    div.innerHTML = forms.length
+      ? forms.map(f =>
+        `<p>
+          <strong>Term:</strong> ${f.currentTerm}<br>
+          <strong>Status:</strong> ${f.status}<br>
+          <button onclick="window.location.href='advisingform.html?email=${email}&formId=${f.id}'">
+            View / Edit
+          </button>
+        </p>`
+      ).join("")
+      : "<p>No advising forms found.</p>";
 
-      tableBody.innerHTML = "";
-      forms.forEach(f => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${f.current_term || "—"}</td>
-          <td>${f.last_gpa ?? "—"}</td>
-          <td>${f.status || "Pending"}</td>
-          <td>${new Date(f.created_at).toLocaleDateString()}</td>
-          <td><button onclick="viewForm(${f.id})">View/Edit</button></td>
-        `;
-        tableBody.appendChild(tr);
-      });
-    } catch (err) {
-      console.error("Error loading forms:", err);
-      tableBody.innerHTML = "<tr><td colspan='5'>Error loading forms.</td></tr>";
-    }
+  } catch (err) {
+    console.error("Error loading forms:", err);
   }
-
-  // --- Load taken courses ---
-  async function loadTakenCourses() {
-    const takenBody = document.getElementById("takenCoursesBody");
-
-    try {
-      const response = await fetch(`${API_BASE}/advising/taken-courses?email=${encodeURIComponent(email)}`);
-      if (!response.ok) throw new Error("Unable to fetch taken courses.");
-      const courses = await response.json();
-
-      if (!Array.isArray(courses) || courses.length === 0) {
-        takenBody.innerHTML = "<tr><td colspan='3'>No previously taken courses found.</td></tr>";
-        return;
-      }
-
-      takenBody.innerHTML = "";
-      courses.forEach(c => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${c.course_code || "—"}</td>
-          <td>${c.course_name || "—"}</td>
-          <td>${c.grade || "—"}</td>
-        `;
-        takenBody.appendChild(tr);
-      });
-    } catch (err) {
-      console.error("Error loading taken courses:", err);
-      takenBody.innerHTML = "<tr><td colspan='3'>Error loading taken courses.</td></tr>";
-    }
-  }
-
-  function viewForm(id) {
-    window.location.href = `advisingform.html?id=${id}&email=${encodeURIComponent(email)}`;
-  }
-
-  document.getElementById("newFormBtn").addEventListener("click", () => {
-    window.location.href = `advisingform.html?email=${encodeURIComponent(email)}`;
-  });
-
-  document.getElementById("logoutBtn").addEventListener("click", () => {
-    localStorage.removeItem("userEmail");
-    window.location.href = "login.html";
-  });
-
-  // --- Run both loads ---
-  loadAdvisingForms();
-  loadTakenCourses();
+}
 </script>
 
-  
 </body>
 </html>

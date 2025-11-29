@@ -11,6 +11,9 @@
   --odu-gray: #f4f6fa;
   --odu-text: #002855;
   --odu-muted: #666;
+
+  /* From advisingform inline styles */
+  --odu-blue: #00539B;
 }
 
 /* ========= GLOBAL ========= */
@@ -22,7 +25,7 @@ body {
   line-height: 1.6;
 }
 
-h1, h2, h3 {
+h1, h2, h3, h4 {
   color: var(--odu-navy);
 }
 
@@ -79,6 +82,58 @@ nav a:hover {
   color: var(--odu-gold);
 }
 
+/* ========= CONTAINERS ========= */
+.container,
+.wrap {
+  max-width: 960px;
+  margin: 40px auto;
+  background: var(--odu-white);
+  padding: 28px;
+  border-radius: 10px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.05);
+}
+
+/* ========= GRID (from advising form) ========= */
+.grid {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.col {
+  flex: 1;
+  min-width: 180px;
+}
+
+/* ========= INPUTS & FORMS ========= */
+label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+  color: var(--odu-navy);
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 1rem;
+  color: var(--odu-text);
+  background-color: #fff;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--odu-gold);
+  outline: none;
+  box-shadow: 0 0 4px rgba(212, 175, 55, 0.4);
+}
+
 /* ========= BUTTONS ========= */
 button,
 .btn {
@@ -110,42 +165,26 @@ button:hover,
   color: var(--odu-white);
 }
 
-/* ========= INPUTS & FORMS ========= */
-label {
-  display: block;
-  margin-bottom: 6px;
-  font-weight: 600;
-  color: var(--odu-navy);
+.small {
+  width: 120px;
 }
 
-input,
-select,
-textarea {
-  width: 100%;
-  padding: 10px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  font-size: 1rem;
-  color: var(--odu-text);
-  background-color: #fff;
+/* ========= COURSE ROWS (from advising form) ========= */
+.courses {
+  margin-top: 20px;
 }
 
-input:focus,
-select:focus,
-textarea:focus {
-  border-color: var(--odu-gold);
-  outline: none;
-  box-shadow: 0 0 4px rgba(212, 175, 55, 0.4);
+.course-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
-.container,
-.wrap {
-  max-width: 960px;
-  margin: 40px auto;
-  background: var(--odu-white);
-  padding: 28px;
-  border-radius: 10px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.05);
+.course-row select {
+  flex: 1;
+  min-width: 150px;
 }
 
 /* ========= TABLES ========= */
@@ -178,6 +217,11 @@ tr:hover {
   background-color: var(--odu-lightgold);
 }
 
+tr.clickable:hover {
+  background-color: #f6f9ff;
+  cursor: pointer;
+}
+
 /* ========= STATUS COLORS ========= */
 .status-pending {
   color: #d97706;
@@ -194,6 +238,14 @@ tr:hover {
   font-weight: 600;
 }
 
+/* ========= ALERTS & MESSAGES ========= */
+.msg {
+  text-align: center;
+  color: #b11f24;
+  margin-top: 10px;
+  font-weight: 500;
+}
+
 /* ========= FOOTER ========= */
 footer {
   text-align: center;
@@ -202,14 +254,6 @@ footer {
   color: var(--odu-muted);
   border-top: 1px solid #ddd;
   margin-top: 60px;
-}
-
-/* ========= ALERTS & MESSAGES ========= */
-.msg {
-  text-align: center;
-  color: #b11f24;
-  margin-top: 10px;
-  font-weight: 500;
 }
 
 /* ========= ANIMATIONS ========= */
@@ -221,10 +265,8 @@ footer {
   from { opacity: 0; transform: translateY(-5px); }
   to { opacity: 1; transform: translateY(0); }
 }
-/* =========================================
-   HEADER DROPDOWN MENU
-   ========================================= */
 
+/* ========= DROPDOWN MENU ========= */
 .dropdown {
   position: relative;
   display: inline-block;
@@ -281,12 +323,6 @@ footer {
 }
 
 @keyframes dropdownFade {
-  from {
-    opacity: 0;
-    transform: translateY(-5px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
 }
