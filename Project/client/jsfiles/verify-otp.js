@@ -1,7 +1,10 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const email = localStorage.getItem("pendingEmail");
+  const BASE_URL = "https://cs418518-f25-clean.onrender.com";
 
-  if (!email) {
+  // Pull email waiting verification
+  const pendingEmail = localStorage.getItem("pendingEmail");
+
+  if (!pendingEmail) {
     alert("No pending email found. Please sign in again.");
     window.location.href = "signin.html";
     return;
@@ -15,24 +18,29 @@ document.addEventListener("DOMContentLoaded", () => {
     const otp = document.getElementById("otp").value;
 
     try {
-      const res = await fetch("http://localhost:8080/user/verify-otp", {
+      const res = await fetch(`${BASE_URL}/user/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, otp }),
+        body: JSON.stringify({ email: pendingEmail, otp }),
       });
 
       const data = await res.json();
       alert(data.message);
 
-      if (res.ok) {
-        // ✅ Save user info and redirect to home
-        localStorage.setItem("email", email);
-        localStorage.removeItem("pendingEmail"); // clear pending
-        window.location.href = "home.html";
-      }
+      if (!res.ok) return;
+
+      // ============================================
+      //  SUCCESS → Move pendingEmail → userEmail
+      // ============================================
+      localStorage.setItem("userEmail", pendingEmail);
+      localStorage.removeItem("pendingEmail");
+
+      // Redirect to home
+      window.location.href = "home.html";
+
     } catch (err) {
       console.error(err);
-      alert("Error verifying OTP.");
+      alert("Error verifying OTP. Please try again.");
     }
   });
 });
