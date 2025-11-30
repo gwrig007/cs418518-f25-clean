@@ -11,17 +11,16 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 
 /* ------------------------------------------------------------------
-   ✅ SECURITY: Prevent Clickjacking (Milestone Requirement)
+   ✅ SECURITY: Prevent Clickjacking
    ------------------------------------------------------------------ */
 app.use(
   helmet({
-    frameguard: { action: "deny" },   // Blocks iframe embedding
-    xssFilter: true                   // Basic XSS protection
+    frameguard: { action: "deny" },
   })
 );
 
 /* ------------------------------------------------------------------
-   ✅ Serve frontend files (HTML, CSS, JS)
+   ✅ Serve frontend files
    ------------------------------------------------------------------ */
 app.use(express.static("client"));
 
@@ -41,10 +40,8 @@ app.use(
   })
 );
 
-// Preflight (OPTIONS)
-app.options("/user/*", cors());
-app.options("/advising/*", cors());
-app.options("*", cors());
+// ✅ Correct universal preflight
+app.options(/.*/, cors());
 
 /* ------------------------------------------------------------------
    ✅ Parse JSON bodies
