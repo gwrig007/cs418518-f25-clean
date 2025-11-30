@@ -23,6 +23,22 @@ app.use(
 );
 
 /* ------------------------------------------------------------------
+   ✅ FORCE CLEVER CLOUD DB CONNECTION (crash app if DB unreachable)
+------------------------------------------------------------------ */
+async function connectDB() {
+  try {
+    await pool.query("SELECT 1");
+    console.log("✅ Clever Cloud MySQL Connected");
+  } catch (err) {
+    console.error("❌ Clever Cloud MySQL Connection Failed:");
+    console.error(err.message);
+    process.exit(1); // Kill app if DB missing
+  }
+}
+
+await connectDB();
+
+/* ------------------------------------------------------------------
    🔧 Keep MySQL Alive (prevents Clever Cloud timeout)
 ------------------------------------------------------------------ */
 setInterval(async () => {
@@ -32,7 +48,7 @@ setInterval(async () => {
   } catch (err) {
     console.error("MySQL KeepAlive Error:", err);
   }
-}, 1000 * 60 * 4); // every 4 minutes
+}, 1000 * 60 * 4);
 
 /* ------------------------------------------------------------------
    📁 Serve client files
@@ -61,7 +77,7 @@ app.use(
 app.use(bodyParser.json());
 
 /* ------------------------------------------------------------------
-   🧭 Log requests (debugging)
+   🧭 Request Logger
 ------------------------------------------------------------------ */
 app.use((req, res, next) => {
   console.log(`📌 ${req.method} ${req.url}`);
