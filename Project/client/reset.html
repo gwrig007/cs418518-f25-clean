@@ -62,7 +62,7 @@
         }
 
         try {
-          const res = await fetch("https://cs418518-f25-clean.onrender.com/user/reset-password", {
+          const res = await fetch("https://cs418518-f25-clean.onrender.com/user/reset", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ token, newPassword }),
