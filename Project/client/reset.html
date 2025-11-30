@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="icon" type="image/png" href="favicon.png">
+
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Reset Password | Course Advising Portal</title>
@@ -48,8 +50,19 @@
           return;
         }
 
+        // 🔐 Password Strength Regex
+        const passwordRegex =
+          /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+
+        if (!passwordRegex.test(newPassword)) {
+          alert(
+            "Password must:\n- Be at least 8 characters\n- Contain uppercase\n- Contain lowercase\n- Contain a number\n- Contain a special character"
+          );
+          return;
+        }
+
         try {
-          const res = await fetch("http://localhost:8080/user/reset-password", {
+          const res = await fetch("https://cs418518-f25-clean.onrender.com/user/reset-password", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ token, newPassword }),
