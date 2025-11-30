@@ -3,172 +3,196 @@ import { pool } from "../database/connection.js";
 
 const router = express.Router();
 
-/* ---------------------------
-   🔹 Utility: Get User ID from Email
---------------------------- */
-async function getUserIdByEmail(email) {
-  if (!email) return null;
+/**
+ * ----------------------------------------------------
+ * GET advising info for a student
+ * ----------------------------------------------------
+ */
+router.get("/get", async (req, res) => {
+  try {
+    const { email } = req.query;
 
-  const [[user]] = await pool.query(
-    "SELECT u_id FROM user_information WHERE u_email = ?",
-    [email]
-  );
+    if (!email) {
+      return res.status(400).json({ success: false, message: "Email required" });
+    }
 
-  return user ? user.u_id : null;
-}
+    // Get user info
+    const [userRows] = await pool.query(
+      "SELECT id FROM user_information WHERE email = ?",
+      [email]
+    );
 
-/* ---------------------------
-   🔹 CURRENT COURSES
---------------------------- */
+    if (!userRows.length) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const userId = userRows[0].id;
+
+    // Get advising record
+    const [advisingRows] = await pool.query(
+      "SELECT * FROM advising WHERE user_id = ? ORDER BY created_at DESC LIMIT 1",
+      [userId]
+    );
+
+    return res.json({
+      success: true,
+      advising: advisingRows[0] || null,
+    });
+  } catch (error) {
+    console.error("GET advising error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+/**
+ * ----------------------------------------------------
+ * SAVE advising form
+ * ----------------------------------------------------
+ */
+router.post("/save", async (req, res) => {
+  try {
+    const { email, current_term, last_term, last_gpa } = req.body;
+
+    if (!email || !current_term || !last_term || !last_gpa) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required fields",
+      });
+    }
+
+    const [userRows] = await pool.query(
+      "SELECT id FROM user_information WHERE email = ?",
+      [email]
+    );
+    if (!userRows.length) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const userId = userRows[0].id;
+
+    // Insert record
+    await pool.query(
+      `INSERT INTO advising (user_id, current_term, last_term, last_gpa, status, created_at)
+       VALUES (?, ?, ?, ?, 'Pending', NOW())`,
+      [userId, current_term, last_term, last_gpa]
+    );
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error("SAVE advising error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.sqlMessage,
+    });
+  }
+});
+
+/**
+ * ----------------------------------------------------
+ * GET last courses (for checklist page)
+ * ----------------------------------------------------
+ */
+router.get("/last-courses", async (req, res) => {
+  try {
+    const { email, term } = req.query;
+
+    if (!email || !term) {
+      return res.status(400).json({ success: false, message: "Missing email or term" });
+    }
+
+    const [userRows] = await pool.query(
+      "SELECT id FROM user_information WHERE email = ?",
+      [email]
+    );
+
+    if (!userRows.length) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const userId = userRows[0].id;
+
+    const [rows] = await pool.query(
+      `SELECT * FROM last_courses WHERE user_id = ? AND term = ?`,
+      [userId, term]
+    );
+
+    return res.json({ success: true, courses: rows });
+  } catch (error) {
+    console.error("LAST COURSES error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+/**
+ * ----------------------------------------------------
+ * GET current courses (for checklist page)
+ * ----------------------------------------------------
+ */
 router.get("/current-courses", async (req, res) => {
   try {
     const { email } = req.query;
-    const userId = await getUserIdByEmail(email);
-    if (!userId) return res.json([]);
+
+    const [userRows] = await pool.query(
+      "SELECT id FROM user_information WHERE email = ?",
+      [email]
+    );
+
+    if (!userRows.length) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const userId = userRows[0].id;
 
     const [rows] = await pool.query(
-      "SELECT course_name FROM current_courses WHERE user_id = ?",
+      "SELECT * FROM current_courses WHERE user_id = ?",
       [userId]
     );
 
-    res.json(rows.map(r => r.course_name));
-  } catch (err) {
-    console.error("CURRENT COURSES ERROR:", err);
-    res.status(500).json({ message: "Error loading current courses" });
+    return res.json({ success: true, courses: rows });
+  } catch (error) {
+    console.error("CURRENT COURSES error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
-/* ---------------------------
-   🔹 TAKEN (Completed) COURSES
---------------------------- */
-router.get("/taken-courses", async (req, res) => {
+/**
+ * ----------------------------------------------------
+ * SAVE planned courses
+ * ----------------------------------------------------
+ */
+router.post("/planned-courses", async (req, res) => {
   try {
-    const { email } = req.query;
-    const userId = await getUserIdByEmail(email);
-    if (!userId) return res.json([]);
+    const { email, term, planned } = req.body;
 
-    const [rows] = await pool.query(
-      "SELECT course_name FROM advising_courses WHERE user_id = ? AND status = 'Completed'",
-      [userId]
+    if (!email || !term || !Array.isArray(planned)) {
+      return res.status(400).json({ success: false, message: "Missing data" });
+    }
+
+    const [userRows] = await pool.query(
+      "SELECT id FROM user_information WHERE email = ?",
+      [email]
     );
 
-    res.json(rows.map(r => r.course_name));
-  } catch (err) {
-    console.error("TAKEN COURSES ERROR:", err);
-    res.status(500).json({ message: "Error loading taken courses" });
-  }
-});
+    if (!userRows.length) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
 
-/* ---------------------------
-   🔹 GET ALL FORMS
---------------------------- */
-router.get("/forms", async (req, res) => {
-  try {
-    const { email } = req.query;
-    const userId = await getUserIdByEmail(email);
-    if (!userId) return res.json([]);
+    const userId = userRows[0].id;
 
-    const [rows] = await pool.query(
-      `SELECT id, current_term, status, created_at
-       FROM advising 
-       WHERE user_id = ?
-       ORDER BY created_at DESC`,
-      [userId]
-    );
-
-    res.json(rows);
-  } catch (err) {
-    console.error("FORMS ERROR:", err);
-    res.status(500).json([]);
-  }
-});
-
-/* ---------------------------
-   🔹 GET ONE FORM
---------------------------- */
-router.get("/form", async (req, res) => {
-  try {
-    const { formId } = req.query;
-
-    const [[form]] = await pool.query(
-      "SELECT id, current_term, last_gpa, status, last_term FROM advising WHERE id = ?",
-      [formId]
-    );
-
-    if (!form) return res.status(404).json({ message: "Form not found" });
-
-    const [courses] = await pool.query(
-      "SELECT course_name, term, status FROM advising_courses WHERE advising_id = ?",
-      [formId]
-    );
-
-    res.json({
-      form,
-      selectedCourses: courses.map(c => c.course_name)
-    });
-  } catch (err) {
-    console.error("LOAD FORM ERROR:", err);
-    res.status(500).json({ message: "Error loading form" });
-  }
-});
-
-/* ---------------------------
-   🔹 SAVE FORM
---------------------------- */
-router.post("/save", async (req, res) => {
-  try {
-    const { formId, email, currentTerm, lastGPA, selectedCourses } = req.body;
-
-    const userId = await getUserIdByEmail(email);
-    if (!userId) return res.status(400).json({ message: "Invalid user" });
-
-    let newId = formId;
-
-    // NEW FORM
-    if (!formId) {
-      const [result] = await pool.query(
-        `INSERT INTO advising (user_id, current_term, last_gpa, status, created_at)
-         VALUES (?, ?, ?, 'Pending', NOW())`,
-        [userId, currentTerm, lastGPA]
-      );
-
-      newId = result.insertId;
-    } else {
-      // UPDATE EXISTING FORM
-      const [[check]] = await pool.query(
-        "SELECT status FROM advising WHERE id = ?",
-        [formId]
-      );
-
-      if (check.status !== "Pending") {
-        return res.status(403).json({ error: "Form is locked." });
-      }
-
+    // Insert each planned course
+    for (let course of planned) {
       await pool.query(
-        "UPDATE advising SET current_term=?, last_gpa=? WHERE id=?",
-        [currentTerm, lastGPA, formId]
+        `INSERT INTO last_courses (advising_id, course_level, course_name, user_id, status, term)
+         VALUES (?, ?, ?, ?, 'Planned', ?)`,
+        [course.advising_id || null, course.course_level, course.course_name, userId, term]
       );
     }
 
-    // delete old courses
-    await pool.query(
-      "DELETE FROM advising_courses WHERE advising_id = ?",
-      [newId]
-    );
-
-    // insert new courses
-    for (const name of selectedCourses) {
-      await pool.query(
-        `INSERT INTO advising_courses (advising_id, user_id, course_name, status, term)
-         VALUES (?, ?, ?, 'Planned', ?)`,
-        [newId, userId, name, currentTerm]
-      );
-    }
-
-    res.json({ success: true, advisingId: newId });
-  } catch (err) {
-    console.error("SAVE ERROR:", err);
-    res.status(500).json({ message: "Error saving form" });
+    return res.json({ success: true });
+  } catch (error) {
+    console.error("PLANNED COURSES error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
 

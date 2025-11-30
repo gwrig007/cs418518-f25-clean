@@ -1,205 +1,118 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Course Advising Form | ODU</title>
-  <link rel="stylesheet" href="style.css">
-  <style>
-    .container {
-      max-width: 750px;
-      margin: 40px auto;
-      background: white;
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }
-    h1 { text-align:center; margin-bottom:20px; }
-    label { display:block; font-weight:600; margin-top:15px; }
-    select, input { width:100%; padding:10px; margin-top:5px; border-radius:6px; border:1px solid #ccc; font-size:16px; }
-    #courses-container label { display:block; margin-bottom:8px; }
-    button { width:100%; margin-top:25px; padding:12px; font-size:18px; background:#0050b3; color:white; border:none; border-radius:6px; cursor:pointer; transition:0.2s; }
-    button:hover { background:#003d8a; }
-    .disabled { background-color:#eee !important; pointer-events:none; opacity:0.6; }
-  </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Advising Form</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-<header>
-  <div style="display:flex;align-items:center;gap:15px;">
-    <img src="https://upload.wikimedia.org/wikipedia/en/2/2d/Old_Dominion_Monarchs_logo.svg" alt="ODU Logo" style="height:60px;">
-    <h1>ODU Course Advising Portal</h1>
-  </div>
-</header>
-
 <div class="container">
   <h1>Course Advising Form</h1>
+
   <form id="advisingForm">
-    <input type="hidden" id="formId">
-    
-    <label>Email</label>
-    <input type="email" id="email" readonly>
 
-    <label>Current Term</label>
-    <select id="currentTerm" required>
-      <option value="">Select term</option>
-      <option>Fall 2023</option><option>Spring 2023</option>
-      <option>Fall 2024</option><option>Spring 2024</option>
-      <option>Fall 2025</option><option>Spring 2025</option>
-      <option>Fall 2026</option><option>Spring 2026</option>
-      <option>Fall 2027</option><option>Spring 2027</option>
+    <!-- Current Term -->
+    <label for="currentTerm">Current Term:</label>
+    <select id="currentTerm" name="currentTerm" required>
+      <option value="">Select Current Term</option>
+      <option value="Spring 2025">Spring 2025</option>
+      <option value="Summer 2025">Summer 2025</option>
+      <option value="Fall 2025">Fall 2025</option>
+      <option value="Spring 2026">Spring 2026</option>
+      <option value="Summer 2026">Summer 2026</option>
+      <option value="Fall 2026">Fall 2026</option>
+      <option value="Spring 2027">Spring 2027</option>
+      <option value="Summer 2027">Summer 2027</option>
+      <option value="Fall 2027">Fall 2027</option>
     </select>
 
-    <label>Last GPA</label>
-    <select id="lastGPA" required></select>
-
-    <label>Status</label>
-    <select id="status" required>
-      <option value="Pending">Pending</option>
-      <option value="Accepted">Accepted</option>
-      <option value="Rejected">Rejected</option>
+    <!-- Last Term Completed (NEW FIELD) -->
+    <label for="lastTerm">Last Term Completed:</label>
+    <select id="lastTerm" name="lastTerm" required>
+      <option value="">Select Last Term Completed</option>
+      <option value="Fall 2024">Fall 2024</option>
+      <option value="Summer 2024">Summer 2024</option>
+      <option value="Spring 2024">Spring 2024</option>
+      <option value="Fall 2023">Fall 2023</option>
+      <option value="Summer 2023">Summer 2023</option>
+      <option value="Spring 2023">Spring 2023</option>
     </select>
 
-    <h3 class="section-title">Select Courses</h3>
-    <p class="note">Courses already taken are disabled.</p>
-    <div id="courses-container"></div>
+    <!-- GPA -->
+    <label for="lastGPA">Last GPA:</label>
+    <input type="text" id="lastGPA" name="lastGPA" placeholder="e.g., 3.40" required />
 
-    <button type="submit" id="submitBtn">Submit Form</button>
-    <button type="button" onclick="window.location.href='classes.html'" style="margin-top:10px;">Back</button>
+    <button type="submit">Save</button>
   </form>
+
+  <p id="saveStatus"></p>
 </div>
 
-<footer>
-  © 2025 Old Dominion University | Course Advising System
-</footer>
-
 <script>
-const BASE_URL = "https://cs418518-f25-clean.onrender.com/advising";
-const email = localStorage.getItem("userEmail");
-const urlParams = new URLSearchParams(window.location.search);
-const formId = urlParams.get("formId");
+const API_BASE = "https://cs418518-f25-clean.onrender.com";
 
-// Redirect if no email
-if (!email) {
-  alert("You must sign in.");
-  window.location.href = "signin.html";
-}
-document.getElementById("email").value = email;
-
-// Populate GPA dropdown
-const gpaSelect = document.getElementById("lastGPA");
-for (let g = 4.00; g >= 0; g -= 0.01) {
-  const val = g.toFixed(2);
-  gpaSelect.innerHTML += `<option value="${val}">${val}</option>`;
-}
-
-// All courses (15 course selections)
-const allCourses = [
-  "CS 150 – Intro to Programming",
-  "CS 250 – Problem Solving",
-  "CS 255 – Computer Architecture",
-  "CS 330 – Object Oriented Programming",
-  "CS 350 – Software Engineering",
-  "CS 360 – Databases",
-  "CS 370 – Operating Systems",
-  "CS 380 – Networks",
-  "CS 390 – Security",
-  "CS 400 – Software Testing",
-  "CS 410 – AI",
-  "CS 420 – Machine Learning",
-  "CS 430 – Web Development",
-  "CS 440 – Mobile Development",
-  "CS 450 – Capstone Project"
-];
-
-// Fetch taken courses
-let takenCourses = [];
-async function loadTakenCourses() {
-  try {
-    const res = await fetch(`${BASE_URL}/taken-courses?email=${encodeURIComponent(email)}`);
-    if (!res.ok) throw new Error("Failed to fetch taken courses");
-    takenCourses = await res.json();
-  } catch(err) {
-    console.error("Error loading taken courses:", err);
-    takenCourses = [];
-  }
-}
-
-// Load form (if editing)
+// Load form with existing student data
 async function loadForm() {
-  if (!formId) return;
   try {
-    const res = await fetch(`${BASE_URL}/form?formId=${formId}`);
-    if (!res.ok) throw new Error("Failed to fetch form");
-    const data = await res.json();
-    document.getElementById("currentTerm").value = data.form.current_term;
-    document.getElementById("lastGPA").value = data.form.last_gpa.toFixed(2);
-    document.getElementById("status").value = data.form.status;
+    const email = localStorage.getItem("email");
+    if (!email) return;
 
-    // lock if status is Accepted/Rejected
-    if (data.form.status !== "Pending") {
-      document.querySelectorAll("select, input").forEach(el=>{
-        el.disabled = true;
-        el.classList.add("disabled");
-      });
-      document.getElementById("submitBtn").style.display = "none";
+    const response = await fetch(`${API_BASE}/advising/get?email=${email}`);
+    const data = await response.json();
+
+    if (data.success && data.advising) {
+      const advising = data.advising;
+
+      // Prefill fields
+      document.getElementById("currentTerm").value = advising.current_term || "";
+      document.getElementById("lastTerm").value = advising.last_term || "";
+      document.getElementById("lastGPA").value = advising.last_gpa || "";
     }
-
-    return data.selectedCourses;
-  } catch(err) {
-    console.error(err);
-    return [];
+  } catch (err) {
+    console.error("Error loading form:", err);
   }
 }
 
-// Render course checkboxes
-async function renderCourses() {
-  await loadTakenCourses();
-  const selectedCourses = await loadForm() || [];
-  const container = document.getElementById("courses-container");
-  container.innerHTML = "";
-
-  allCourses.forEach(course => {
-    const checked = selectedCourses.includes(course) ? "checked" : "";
-    const disabled = takenCourses.includes(course) ? "disabled class='disabled'" : "";
-    container.innerHTML += `
-      <label ${disabled}>
-        <input type="checkbox" name="selectedCourses" value="${course}" ${checked} ${disabled}> ${course}
-      </label>
-    `;
-  });
-}
-
-// Handle form submit
-document.getElementById("advisingForm").addEventListener("submit", async (e)=>{
+document.getElementById("advisingForm").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const selectedCourses = [...document.querySelectorAll('input[name="selectedCourses"]:checked')].map(c=>c.value);
-  const payload = {
-    formId,
-    email,
-    currentTerm: document.getElementById("currentTerm").value,
-    lastGPA: document.getElementById("lastGPA").value,
-    selectedCourses
+
+  const email = localStorage.getItem("email");
+  if (!email) {
+    alert("User email not found.");
+    return;
+  }
+
+  const body = {
+    email: email,
+    current_term: document.getElementById("currentTerm").value,
+    last_term: document.getElementById("lastTerm").value,
+    last_gpa: document.getElementById("lastGPA").value
   };
+
   try {
-    const res = await fetch(`${BASE_URL}/save`, {
-      method:"POST",
-      headers: { "Content-Type":"application/json" },
-      body: JSON.stringify(payload)
+    const response = await fetch(`${API_BASE}/advising/save`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
     });
-    const data = await res.json();
-    if (data.success) {
-      alert("Advising form submitted!");
-      window.location.href = "classes.html";
+
+    const result = await response.json();
+
+    if (result.success) {
+      document.getElementById("saveStatus").textContent = "Saved successfully!";
+    } else {
+      document.getElementById("saveStatus").textContent = "Save failed.";
     }
-  } catch(err) {
-    console.error("Error saving form:", err);
-    alert("Error saving form.");
+  } catch (err) {
+    document.getElementById("saveStatus").textContent = "An error occurred.";
+    console.error("Save error:", err);
   }
 });
 
-// Initialize
-renderCourses();
+// Run on page load
+loadForm();
 </script>
 
 </body>
