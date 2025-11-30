@@ -1,17 +1,33 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
 import bodyParser from "body-parser";
+
 import user from "./route/user.js";
 import advising from "./route/advising.js";
 
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// ✅ Serve client files (like classes.html, style.css)
+/* ------------------------------------------------------------------
+   ✅ SECURITY: Prevent Clickjacking (Milestone Requirement)
+   ------------------------------------------------------------------ */
+app.use(
+  helmet({
+    frameguard: { action: "deny" },   // Blocks iframe embedding
+    xssFilter: true                   // Basic XSS protection
+  })
+);
+
+/* ------------------------------------------------------------------
+   ✅ Serve frontend files (HTML, CSS, JS)
+   ------------------------------------------------------------------ */
 app.use(express.static("client"));
 
-// ✅ CORS setup
+/* ------------------------------------------------------------------
+   ✅ CORS configuration
+   ------------------------------------------------------------------ */
 app.use(
   cors({
     origin: [
@@ -25,33 +41,47 @@ app.use(
   })
 );
 
-// ✅ Handle preflight requests
-app.options(/.*/, cors());
+// Preflight (OPTIONS)
+app.options("/user/*", cors());
+app.options("/advising/*", cors());
+app.options("*", cors());
 
-// ✅ Parse JSON bodies
+/* ------------------------------------------------------------------
+   ✅ Parse JSON bodies
+   ------------------------------------------------------------------ */
 app.use(bodyParser.json());
 
-// ✅ Log requests
+/* ------------------------------------------------------------------
+   ✅ Log requests
+   ------------------------------------------------------------------ */
 app.use((req, res, next) => {
-  console.log(`${req.method} ${req.url}`);
+  console.log(`📌 ${req.method} ${req.url}`);
   next();
 });
 
-// ✅ Routes
+/* ------------------------------------------------------------------
+   ✅ API Routes
+   ------------------------------------------------------------------ */
 app.use("/user", user);
-app.use("/advising", advising); // keep only THIS one
+app.use("/advising", advising);
 
-// ✅ Root route
+/* ------------------------------------------------------------------
+   ✅ Root route
+   ------------------------------------------------------------------ */
 app.get("/", (req, res) => {
   res.json({ status: 200, message: "✅ Server is running successfully 🚀" });
 });
 
-// ✅ 404 handler
+/* ------------------------------------------------------------------
+   ❌ 404 Handler
+   ------------------------------------------------------------------ */
 app.use((req, res) => {
   res.status(404).json({ status: 404, message: "Route not found 😢" });
 });
 
-// ✅ Start server
+/* ------------------------------------------------------------------
+   🚀 Start Server
+   ------------------------------------------------------------------ */
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`✅ Server running on port ${PORT}`);
 });
