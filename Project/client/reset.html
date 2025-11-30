@@ -4,82 +4,88 @@
   <link rel="icon" type="image/png" href="favicon.png">
 
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Reset Password | Course Advising Portal</title>
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
   <div class="container">
     <h1>Reset Password</h1>
-    <p>Enter your new password below to reset your account.</p>
+    <p>Enter your new password below.</p>
 
     <form id="resetForm">
       <input 
-        type="password" 
-        id="newPassword" 
-        name="newPassword" 
-        placeholder="New password" 
-        required 
+        type="password"
+        id="newPassword"
+        placeholder="New password"
+        required
+        autocomplete="new-password"
       />
+
       <input 
-        type="password" 
-        id="confirmPassword" 
-        name="confirmPassword" 
-        placeholder="Confirm new password" 
-        required 
+        type="password"
+        id="confirmPassword"
+        placeholder="Confirm new password"
+        required
+        autocomplete="new-password"
       />
+
       <button type="submit">Reset Password</button>
       <a href="signin.html" class="link">Back to Sign In</a>
     </form>
   </div>
 
   <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const form = document.getElementById("resetForm");
+    const API = "https://cs418518-f25-clean.onrender.com/user/reset-password";
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get("token");
 
-      form.addEventListener("submit", async (e) => {
-        e.preventDefault();
+    if (!token) {
+      alert("Invalid reset link.");
+      window.location.href = "signin.html";
+    }
 
-        const newPassword = document.getElementById("newPassword").value.trim();
-        const confirmPassword = document.getElementById("confirmPassword").value.trim();
-        const urlParams = new URLSearchParams(window.location.search);
-        const token = urlParams.get("token"); // token from email link
+    document.getElementById("resetForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
 
-        if (newPassword !== confirmPassword) {
-          alert("Passwords do not match!");
-          return;
+      const newPassword = document.getElementById("newPassword").value.trim();
+      const confirmPassword = document.getElementById("confirmPassword").value.trim();
+
+      const regex =
+        /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+
+      if (!regex.test(newPassword)) {
+        alert("Password must contain 8+ chars, upper, lower, number & symbol.");
+        return;
+      }
+
+      if (newPassword !== confirmPassword) {
+        alert("Passwords do not match.");
+        return;
+      }
+
+      try {
+        const res = await fetch(API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, newPassword }),
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          alert("Password has been reset!");
+          window.location.href = "signin.html";
+        } else {
+          alert(data.message || "Reset failed.");
         }
-
-        // 🔐 Password Strength Regex
-        const passwordRegex =
-          /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-
-        if (!passwordRegex.test(newPassword)) {
-          alert(
-            "Password must:\n- Be at least 8 characters\n- Contain uppercase\n- Contain lowercase\n- Contain a number\n- Contain a special character"
-          );
-          return;
-        }
-
-        try {
-          const res = await fetch("https://cs418518-f25-clean.onrender.com/user/reset", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token, newPassword }),
-          });
-
-          const data = await res.json();
-          alert(data.message);
-
-          if (res.ok) {
-            window.location.href = "signin.html";
-          }
-        } catch (err) {
-          console.error("Error resetting password:", err);
-          alert("Error resetting password. Please try again.");
-        }
-      });
+      } catch (err) {
+        console.error(err);
+        alert("Server error. Try again.");
+      }
     });
   </script>
+
 </body>
 </html>

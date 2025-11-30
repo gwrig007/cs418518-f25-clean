@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
   <link rel="icon" type="image/png" href="favicon.png">
-
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Forgot Password | Course Advising Portal</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
   <div class="container">
     <h1>Forgot Password</h1>
     <p>Enter your registered email address, and we’ll send you a password reset link.</p>
@@ -17,9 +17,9 @@
       <input 
         type="email" 
         id="email" 
-        name="email" 
-        placeholder="Enter your email" 
-        required 
+        placeholder="Enter your email"
+        required
+        autocomplete="email"
       />
       <button type="submit">Send Reset Link</button>
       <a href="signin.html" class="link">Back to Sign In</a>
@@ -27,39 +27,38 @@
   </div>
 
   <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const form = document.getElementById("forgotForm");
+    const API = "https://cs418518-f25-clean.onrender.com/user/forgot";
 
-      form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const email = document.getElementById("email").value.trim();
+    document.getElementById("forgotForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
 
-        if (!email) {
-          alert("Please enter your email.");
-          return;
+      const email = document.getElementById("email").value.trim();
+      if (!email) {
+        alert("Please enter your email.");
+        return;
+      }
+
+      try {
+        const res = await fetch(API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          alert("Password reset link sent! Check your email.");
+          window.location.href = "signin.html";
+        } else {
+          alert(data.message || "Error sending reset link.");
         }
-
-        try {
-          const res = await fetch("https://cs418518-f25-clean.onrender.com/user/forgot", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email }),
-          });
-
-          const data = await res.json();
-
-          if (res.ok) {
-            alert(data.message || "Password reset link sent! Check your email.");
-            window.location.href = "signin.html";
-          } else {
-            alert(data.message || "Failed to send reset link. Try again.");
-          }
-        } catch (err) {
-          console.error("Error:", err);
-          alert("Server error. Please try again later.");
-        }
-      });
+      } catch (err) {
+        console.error(err);
+        alert("Server error. Please try again.");
+      }
     });
   </script>
+
 </body>
 </html>
