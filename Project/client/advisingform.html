@@ -132,13 +132,14 @@
     let selectedCourses = [];
     let takenCourses = [];
 
-    // load already-taken courses (status = 'Completed') to disable them
     async function loadTakenCourses() {
       try {
         const res = await fetch(`${BASE_URL}/taken-courses?email=${encodeURIComponent(email)}`);
-        if (!res.ok) { console.warn("taken-courses fetch failed"); return; }
-        const data = await res.json(); // array of course_name strings
+        if (!res.ok) return;
+
+        const data = await res.json();
         takenCourses = Array.isArray(data) ? data : [];
+
         disableTakenCourses();
       } catch (err) {
         console.error("Error loading taken courses:", err);
@@ -148,9 +149,7 @@
     function disableTakenCourses() {
       const options = document.querySelectorAll("#courseSelect option");
       options.forEach(opt => {
-        // skip placeholder
         if (!opt.value) return;
-        // compare trimmed strings
         if (takenCourses.some(t => t.trim() === opt.textContent.trim())) {
           opt.classList.add("disabled-course");
           opt.disabled = true;
@@ -159,43 +158,40 @@
       });
     }
 
-    // add course button
     document.getElementById("addCourseBtn").addEventListener("click", () => {
       const courseName = document.getElementById("courseSelect").value;
       const courseStatus = document.getElementById("courseStatus").value;
       const courseTerm = document.getElementById("courseTerm").value;
 
-      if (!courseName) { alert("Please choose a course."); return; }
-      if (!courseTerm) { alert("Please select a term for the course."); return; }
+      if (!courseName) return alert("Please choose a course.");
+      if (!courseTerm) return alert("Please select a term.");
 
-      // prevent adding a taken course
-      if (takenCourses.some(t => t.trim() === courseName.trim()) && courseStatus !== "Completed") {
-        alert("This course is already completed — you cannot add it as Planned/Current.");
+      if (
+        takenCourses.some(t => t.trim() === courseName.trim()) &&
+        courseStatus !== "Completed"
+      ) {
+        alert("This course is already completed.");
         return;
       }
 
-      // prevent duplicates in this form
       if (selectedCourses.some(c => c.course_name === courseName && c.term === courseTerm)) {
-        alert("This course + term is already added to the list.");
+        alert("This course + term is already added.");
         return;
       }
 
-      selectedCourses.push({
-        course_name: courseName,
-        status: courseStatus,
-        term: courseTerm
-      });
-
+      selectedCourses.push({ course_name: courseName, status: courseStatus, term: courseTerm });
       renderSelectedCourses();
     });
 
     function renderSelectedCourses() {
       const container = document.getElementById("selectedCoursesList");
       container.innerHTML = "";
+
       if (selectedCourses.length === 0) {
         container.innerHTML = "<p class='muted'>No courses added yet.</p>";
         return;
       }
+
       selectedCourses.forEach((c, i) => {
         const row = document.createElement("div");
         row.className = "course-item";
@@ -204,9 +200,7 @@
             <strong>${c.course_name}</strong><br/>
             <small>${c.status} — ${c.term}</small>
           </div>
-          <div>
-            <button class="remove-btn" type="button" onclick="removeCourse(${i})">Remove</button>
-          </div>
+          <button class="remove-btn" onclick="removeCourse(${i})">Remove</button>
         `;
         container.appendChild(row);
       });
@@ -217,71 +211,52 @@
       renderSelectedCourses();
     };
 
-    // load form when editing
     async function loadFormIfEditing() {
       if (!formId) return;
+
       try {
         const res = await fetch(`${BASE_URL}/form?formId=${encodeURIComponent(formId)}`);
-        if (!res.ok) { console.warn("form fetch failed"); return; }
+        if (!res.ok) return;
+
         const data = await res.json();
 
-        // fill parent fields
         if (data.current_term) document.getElementById("currentTerm").value = data.current_term;
         if (data.last_gpa) document.getElementById("lastGPA").value = data.last_gpa;
         if (data.status) document.getElementById("status").value = data.status;
 
-        // selectedCourses can be either:
-        // (A) array of strings (old behavior) OR
-        // (B) array of objects { course_name, status, term } (new behavior)
         const incoming = data.selectedCourses || [];
-        selectedCourses = incoming.map(item => {
-          if (typeof item === "string") {
-            // string -> make object, default status = Completed if present in takenCourses else Planned
-            const status = takenCourses.includes(item) ? "Completed" : "Planned";
-            // prefer form's current_term as term if nothing else
-            return { course_name: item, status, term: data.current_term || "" };
-          } else {
-            // already an object
-            return {
-              course_name: item.course_name || item.courseName || "",
-              status: item.status || "Planned",
-              term: item.term || data.current_term || ""
-            };
-          }
-        });
+        selectedCourses = incoming.map(item =>
+          typeof item === "string"
+            ? {
+                course_name: item,
+                status: takenCourses.includes(item) ? "Completed" : "Planned",
+                term: data.current_term || ""
+              }
+            : {
+                course_name: item.course_name || item.courseName || "",
+                status: item.status || "Planned",
+                term: item.term || data.current_term || ""
+              }
+        );
 
         renderSelectedCourses();
 
-        // if form finalized -> lock inputs
-        if (data.status === "Approved" || data.status === "Rejected") {
-          document.querySelectorAll("select, input, button").forEach(el => el.disabled = true);
-          // keep "Back" maybe shown as link; hide save
-          const saveBtn = document.getElementById("saveBtn");
-          if (saveBtn) saveBtn.style.display = "none";
+        if (["Approved", "Rejected"].includes(data.status)) {
+          document.querySelectorAll("input, select, button").forEach(el => (el.disabled = true));
+          document.getElementById("saveBtn").style.display = "none";
         }
       } catch (err) {
         console.error("Error loading form:", err);
       }
     }
 
-    // initial load
     loadTakenCourses().then(loadFormIfEditing);
 
-    // save handler: send payload that matches your existing backend (email + currentTerm + lastGPA + status + selectedCourses)
-    document.getElementById("advisingForm").addEventListener("submit", async (e) => {
+    document.getElementById("advisingForm").addEventListener("submit", async e => {
       e.preventDefault();
 
-      // basic validation
-      if (!document.getElementById("currentTerm").value) {
-        alert("Please select a current term.");
-        return;
-      }
-
-      if (selectedCourses.length === 0) {
-        if (!confirm("No courses added — submit empty advising form?")) {
-          return;
-        }
-      }
+      if (!document.getElementById("currentTerm").value)
+        return alert("Please select a current term.");
 
       const payload = {
         formId: formId || null,
@@ -289,7 +264,7 @@
         currentTerm: document.getElementById("currentTerm").value,
         lastGPA: document.getElementById("lastGPA").value || null,
         status: document.getElementById("status").value,
-        selectedCourses // array of { course_name, status, term }
+        selectedCourses
       };
 
       try {
@@ -300,17 +275,17 @@
         });
 
         const json = await res.json();
+
         if (!res.ok) {
           console.error("Save failed:", json);
-          alert("Error saving form. See console for details.");
-          return;
+          return alert("Error saving.");
         }
 
         alert("Form saved!");
         window.location.href = "classes.html";
       } catch (err) {
-        console.error("Network/save error:", err);
-        alert("Network error while saving. Check console.");
+        console.error(err);
+        alert("Network error.");
       }
     });
   </script>
