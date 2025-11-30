@@ -7,7 +7,7 @@ import nodemailer from "nodemailer";
 const router = express.Router();
 
 /* ============================================================
-   📌 HELPER — SEND EMAIL
+   📌 EMAIL TRANSPORTER (SAFE MODE)
 ============================================================ */
 const transporter = nodemailer.createTransport({
   service: "gmail",
@@ -51,14 +51,10 @@ router.post("/login", async (req, res) => {
       [email]
     );
 
-    if (!user) {
-      return res.status(404).json({ message: "Email not found." });
-    }
+    if (!user) return res.status(404).json({ message: "Email not found." });
 
     const match = await bcrypt.compare(password, user.u_password);
-    if (!match) {
-      return res.status(401).json({ message: "Incorrect password." });
-    }
+    if (!match) return res.status(401).json({ message: "Incorrect password." });
 
     res.json({ message: "Login successful!", userId: user.u_id });
   } catch (err) {
@@ -68,46 +64,51 @@ router.post("/login", async (req, res) => {
 });
 
 /* ============================================================
-   📌 FORGOT PASSWORD — SEND RESET EMAIL
+   📌 FORGOT PASSWORD (SAFE IMPLEMENTATION)
 ============================================================ */
 router.post("/forgot", async (req, res) => {
-  try {
-    const { email } = req.body;
+  const { email } = req.body;
 
+  if (!email) return res.status(400).json({ message: "Email is required." });
+
+  try {
     const [[user]] = await pool.query(
       "SELECT u_id FROM user_information WHERE u_email = ?",
       [email]
     );
 
-    if (!user) {
-      return res.status(404).json({ message: "Email not found." });
-    }
+    // ✅ Always respond safely (no enumeration)
+    if (!user)
+      return res.json({ message: "If the email exists, a reset link has been sent." });
 
-    // Generate reset token
     const token = crypto.randomBytes(32).toString("hex");
 
-    // Save reset token
     await pool.query(
       "UPDATE user_information SET verification_token = ? WHERE u_email = ?",
       [token, email]
     );
 
-    // ⭐ Link for Netlify Frontend
-    const resetLink = `https://oduadvisingportal.netlify.app/reset.html?token=${token}`;
+    const resetLink =
+      `https://oduadvisingportal.netlify.app/reset.html?token=${token}`;
 
-    // Send email
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: "Password Reset Request",
-      html: `
-        <p>You requested a password reset.</p>
-        <p>Click the link below to set a new password:</p>
-        <a href="${resetLink}">${resetLink}</a>
-      `,
-    });
+    // ✅ Try to send email (but never block app if email fails)
+    try {
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: "Password Reset Request",
+        html: `
+          <p>You requested a password reset.</p>
+          <p>Click the link below:</p>
+          <a href="${resetLink}">${resetLink}</a>
+        `,
+      });
+    } catch (emailErr) {
+      console.error("EMAIL ERROR:", emailErr.message);
+    }
 
-    res.json({ message: "Password reset link sent!" });
+    res.json({ message: "If the email exists, a reset link has been sent." });
+
   } catch (err) {
     console.error("FORGOT ERROR:", err);
     res.status(500).json({ message: "Server error." });
@@ -115,26 +116,32 @@ router.post("/forgot", async (req, res) => {
 });
 
 /* ============================================================
-   📌 RESET PASSWORD (from reset.html)
+   📌 RESET PASSWORD (TOKEN)
 ============================================================ */
 router.post("/reset-password", async (req, res) => {
-  try {
-    const { token, newPassword } = req.body;
+  const { token, newPassword } = req.body;
 
-    if (!token) return res.status(400).json({ message: "Invalid token." });
+  if (!token || !newPassword)
+    return res.status(400).json({ message: "Missing token or password." });
+
+  try {
+    const [rows] = await pool.query(
+      "SELECT u_id FROM user_information WHERE verification_token = ?",
+      [token]
+    );
+
+    if (rows.length === 0)
+      return res.status(400).json({ message: "Invalid or expired reset link." });
 
     const hashed = await bcrypt.hash(newPassword, 10);
 
-    const [result] = await pool.query(
-      "UPDATE user_information SET u_password = ?, verification_token = NULL WHERE verification_token = ?",
-      [hashed, token]
+    await pool.query(
+      "UPDATE user_information SET u_password = ?, verification_token = NULL WHERE u_id = ?",
+      [hashed, rows[0].u_id]
     );
 
-    if (result.affectedRows === 0) {
-      return res.status(400).json({ message: "Invalid or expired token." });
-    }
+    res.json({ message: "Password successfully reset." });
 
-    res.json({ message: "Password reset successfully!" });
   } catch (err) {
     console.error("RESET ERROR:", err);
     res.status(500).json({ message: "Server error." });
@@ -142,23 +149,25 @@ router.post("/reset-password", async (req, res) => {
 });
 
 /* ============================================================
-   📌 CHANGE PASSWORD (From profile page)
+   📌 CHANGE PASSWORD (LOGGED-IN USERS)
 ============================================================ */
 router.put("/change-password", async (req, res) => {
-  try {
-    const { email, currentPassword, newPassword } = req.body;
+  const { email, currentPassword, newPassword } = req.body;
 
+  if (!email || !currentPassword || !newPassword)
+    return res.status(400).json({ message: "Missing required fields." });
+
+  try {
     const [[user]] = await pool.query(
-      "SELECT * FROM user_information WHERE u_email = ?",
+      "SELECT u_password FROM user_information WHERE u_email = ?",
       [email]
     );
 
     if (!user) return res.status(404).json({ message: "User not found." });
 
-    const match = await bcrypt.compare(currentPassword, user.u_password);
-    if (!match) {
+    const valid = await bcrypt.compare(currentPassword, user.u_password);
+    if (!valid)
       return res.status(401).json({ message: "Incorrect current password." });
-    }
 
     const hashed = await bcrypt.hash(newPassword, 10);
 
@@ -168,6 +177,7 @@ router.put("/change-password", async (req, res) => {
     );
 
     res.json({ message: "Password updated successfully!" });
+
   } catch (err) {
     console.error("CHANGE PASSWORD ERROR:", err);
     res.status(500).json({ message: "Server error updating password." });
