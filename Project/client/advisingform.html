@@ -5,28 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Advising Form</title>
   <link rel="stylesheet" href="style.css" />
-  <style>
-    .course-item {
-      display: flex;
-      justify-content: space-between;
-      background: #f3f3f3;
-      padding: 8px;
-      margin-bottom: 6px;
-      border-radius: 5px;
-    }
-    .remove-btn {
-      background: red;
-      color: white;
-      border: none;
-      padding: 3px 8px;
-      cursor: pointer;
-      border-radius: 4px;
-    }
-    .disabled-course {
-      opacity: 0.4;
-      pointer-events: none;
-    }
-  </style>
 </head>
 <body>
 
@@ -34,6 +12,7 @@
   <h1>Course Advising Form</h1>
 
   <form id="advisingForm">
+    <input type="hidden" id="userId" />
     <input type="hidden" id="formId" />
 
     <label>Email</label>
@@ -42,55 +21,52 @@
     <label>Current Term</label>
     <select id="currentTerm" required>
       <option value="">Select Term</option>
-      <option>Fall 2023</option><option>Spring 2023</option>
-      <option>Fall 2024</option><option>Spring 2024</option>
-      <option>Fall 2025</option><option>Spring 2025</option>
-      <option>Fall 2026</option><option>Spring 2026</option>
-      <option>Fall 2027</option><option>Spring 2027</option>
+      <option>Fall 2024</option><option>Spring 2025</option>
+      <option>Fall 2025</option><option>Spring 2026</option>
     </select>
 
     <label>Last GPA</label>
     <select id="lastGPA">
       <option value="">Select GPA</option>
-      <option>4.0</option><option>3.9</option><option>3.8</option><option>3.7</option>
-      <option>3.6</option><option>3.5</option><option>3.4</option><option>3.3</option>
-      <option>3.2</option><option>3.1</option><option>3.0</option><option>2.9</option>
-      <option>2.8</option><option>2.7</option><option>2.6</option><option>2.5</option>
+      <option>4.0</option><option>3.9</option><option>3.8</option>
+      <option>3.7</option><option>3.6</option><option>3.5</option>
     </select>
 
-    <label>Status</label>
-    <select id="status">
-      <option value="Pending">Pending</option>
-      <option value="Approved">Approved</option>
-      <option value="Rejected">Rejected</option>
+    <label>Last Term Completed</label>
+    <select id="lastTerm">
+      <option value="">Select Term</option>
+      <option>Fall 2023</option><option>Spring 2024</option>
+      <option>Fall 2024</option>
     </select>
 
     <h3>Select Courses</h3>
+
+    <label>Choose Course</label>
     <select id="courseSelect">
       <option value="">Choose a Course</option>
       <option>CS 150 – Intro to Programming</option>
       <option>CS 250 – Problem Solving</option>
-      <option>CS 255 – Computer Architecture</option>
-      <option>CS 330 – Object Oriented Programming</option>
-      <option>CS 350 – Software Engineering</option>
-      <option>CS 355 – Principles of Networking</option>
       <option>CS 361 – Data Structures</option>
-      <option>CS 381 – Database Concepts</option>
-      <option>CS 410 – Ethics in CS</option>
-      <option>CS 417 – Algorithms</option>
-      <option>CS 421 – Web Programming</option>
-      <option>CS 450 – Operating Systems</option>
-      <option>CS 460 – Cybersecurity Fundamentals</option>
-      <option>CS 470 – Artificial Intelligence</option>
-      <option>CS 480 – Mobile App Development</option>
+    </select>
+
+    <label>Course Status</label>
+    <select id="courseStatus">
+      <option value="Planned">Planned</option>
+      <option value="Current">Current</option>
+      <option value="Completed">Completed</option>
+    </select>
+
+    <label>Course Term</label>
+    <select id="courseTerm">
+      <option value="">Select Term</option>
+      <option>Fall 2024</option><option>Spring 2025</option>
     </select>
 
     <button type="button" id="addCourseBtn">Add Course</button>
 
     <div id="selectedCoursesList"></div>
 
-    <button type="submit" id="saveBtn">Save Advising Form</button>
-    <button type="button" onclick="window.location.href='classes.html'">Back</button>
+    <button type="submit">Save Advising Form</button>
   </form>
 </div>
 
@@ -98,35 +74,41 @@
 const BASE_URL = "https://cs418518-f25-clean.onrender.com/advising";
 
 let email = localStorage.getItem("userEmail");
-const params = new URLSearchParams(window.location.search);
-const formId = params.get("formId");
-
-if (!email) {
-  alert("You must sign in.");
-  window.location.href = "signin.html";
-}
-
 document.getElementById("email").value = email;
 
 let selectedCourses = [];
-let takenCourses = [];
+let userId = null;
 
 /* ---------------------------------------------------------
-   LOAD TAKEN COURSES (disable them)
+   GET USER ID
 --------------------------------------------------------- */
-fetch(`${BASE_URL}/taken-courses?email=${email}`)
+fetch(`https://cs418518-f25-clean.onrender.com/users/by-email?email=${email}`)
   .then(res => res.json())
   .then(data => {
-    takenCourses = data;
-    disableTakenCourses();
+    userId = data.user_id;
+    document.getElementById("userId").value = userId;
+
+    loadTakenCourses();
   });
 
-function disableTakenCourses() {
+/* ---------------------------------------------------------
+   LOAD TAKEN COURSES
+--------------------------------------------------------- */
+function loadTakenCourses() {
+  fetch(`${BASE_URL}/courses/${userId}`)
+    .then(res => res.json())
+    .then(data => {
+      let taken = data.map(c => c.course_name);
+      disableTaken(taken);
+    });
+}
+
+function disableTaken(taken) {
   const options = document.querySelectorAll("#courseSelect option");
   options.forEach(opt => {
-    if (takenCourses.includes(opt.textContent)) {
-      opt.classList.add("disabled-course");
+    if (taken.includes(opt.textContent)) {
       opt.disabled = true;
+      opt.style.opacity = "0.4";
     }
   });
 }
@@ -135,55 +117,31 @@ function disableTakenCourses() {
    ADD COURSE
 --------------------------------------------------------- */
 document.getElementById("addCourseBtn").addEventListener("click", () => {
-  const selected = document.getElementById("courseSelect").value;
-  if (!selected || selectedCourses.includes(selected)) return;
+  const course = document.getElementById("courseSelect").value;
+  const status = document.getElementById("courseStatus").value;
+  const term = document.getElementById("courseTerm").value;
 
-  selectedCourses.push(selected);
-  renderSelectedCourses();
+  if (!course || !term) return alert("Choose course + term.");
+
+  selectedCourses.push({ course_name: course, status, term });
+  renderCourses();
 });
 
-function renderSelectedCourses() {
-  const container = document.getElementById("selectedCoursesList");
-  container.innerHTML = "";
+function renderCourses() {
+  const list = document.getElementById("selectedCoursesList");
+  list.innerHTML = "";
 
-  selectedCourses.forEach(course => {
+  selectedCourses.forEach((c, i) => {
     const div = document.createElement("div");
-    div.className = "course-item";
-    div.innerHTML = `
-      <span>${course}</span>
-      <button class="remove-btn" onclick="removeCourse('${course}')">X</button>
-    `;
-    container.appendChild(div);
+    div.innerHTML = `${c.course_name} — ${c.status} (${c.term})
+      <button onclick="removeCourse(${i})">X</button>`;
+    list.appendChild(div);
   });
 }
 
-function removeCourse(course) {
-  selectedCourses = selectedCourses.filter(c => c !== course);
-  renderSelectedCourses();
-}
-
-/* ---------------------------------------------------------
-   LOAD FORM IF EDITING
---------------------------------------------------------- */
-if (formId) {
-  fetch(`${BASE_URL}/form?formId=${formId}`)
-    .then(res => res.json())
-    .then(data => {
-      document.getElementById("formId").value = data.id;
-      document.getElementById("currentTerm").value = data.current_term;
-      document.getElementById("lastGPA").value = data.last_gpa;
-      document.getElementById("status").value = data.status;
-
-      // Preload selected courses
-      selectedCourses = data.selectedCourses || [];
-      renderSelectedCourses();
-
-      // Lock if approved or rejected
-      if (data.status === "Approved" || data.status === "Rejected") {
-        document.querySelectorAll("select, button, input").forEach(el => el.disabled = true);
-        document.getElementById("saveBtn").style.display = "none";
-      }
-    });
+function removeCourse(i) {
+  selectedCourses.splice(i, 1);
+  renderCourses();
 }
 
 /* ---------------------------------------------------------
@@ -193,11 +151,10 @@ document.getElementById("advisingForm").addEventListener("submit", async (e) => 
   e.preventDefault();
 
   const payload = {
-    formId,
-    email,
+    userId,
     currentTerm: document.getElementById("currentTerm").value,
-    lastGPA: document.getElementById("lastGPA").value,
-    status: document.getElementById("status").value,
+    lastGpa: document.getElementById("lastGPA").value,
+    lastTerm: document.getElementById("lastTerm").value,
     selectedCourses
   };
 
@@ -209,8 +166,8 @@ document.getElementById("advisingForm").addEventListener("submit", async (e) => 
 
   const result = await res.json();
 
-  if (result.success) {
-    alert("Form saved!");
+  if (result.advisingId) {
+    alert("Saved!");
     window.location.href = "classes.html";
   } else {
     alert("Error saving form.");
