@@ -7,17 +7,17 @@ export const pool = mysql.createPool({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_DATABASE,
   port: process.env.DB_PORT || 3306,
+
   waitForConnections: true,
-  connectionLimit: 10,
+  connectionLimit: 5,     // 🔥 Match Clever Cloud's max_user_connections = 5
   queueLimit: 0,
-  ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: true } : false, // ✅ Toggle SSL dynamically
 });
 
-// Quick test when the server starts
-try {
-  const conn = await pool.getConnection();
-  console.log("✅ Connected to Clever Cloud MySQL!");
-  conn.release();
-} catch (err) {
-  console.error("❌ MySQL connection failed:", err.message);
-}
+// Logs for debugging (optional)
+pool.on("connection", () => {
+  console.log("🔥 New MySQL connection established");
+});
+
+pool.on("release", () => {
+  console.log("♻ MySQL connection released");
+});
