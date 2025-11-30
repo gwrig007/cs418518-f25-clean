@@ -1,30 +1,27 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Advising Dashboard | ODU</title>
-<link rel="stylesheet" href="style.css">
-<style>
-.container { max-width: 900px; margin: 40px auto; background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-h1 { text-align: center; }
-.course-box, .form-row { background: #f9f9f9; padding: 10px; margin: 5px 0; border-radius: 6px; border: 1px solid #ddd; }
-.btn { padding: 10px 15px; background: #0050b3; color: #fff; border-radius: 6px; text-decoration: none; cursor: pointer; }
-.btn:hover { background: #003d8a; }
-.view-btn { padding: 6px 10px; background: #0066cc; color: #fff; border-radius: 6px; text-decoration: none; }
-.view-btn:hover { background: #004c99; }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your Courses | ODU</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .container { max-width:900px; margin:40px auto; padding:30px; background:white; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.1);}
+    h1,h2 { margin-top:20px; }
+    .course-box,.form-row { padding:10px; border:1px solid #ccc; margin:5px 0; border-radius:6px; background:#f9f9f9; }
+    .btn { padding:10px 15px; margin:10px 5px; border-radius:6px; background:#0050b3;color:white;text-decoration:none; display:inline-block; cursor:pointer;}
+    .btn:hover { background:#003d8a; }
+  </style>
 </head>
 <body>
-
+<header><h1>ODU Course Advising Dashboard</h1></header>
 <div class="container">
-  <h1>Advising Dashboard</h1>
   <button class="btn" onclick="window.location.href='advisingform.html'">➕ New Advising Form</button>
 
   <h2>Current Courses</h2>
   <div id="currentCourses"><p>Loading...</p></div>
 
-  <h2>Courses Taken Last Term</h2>
+  <h2>Completed Courses</h2>
   <div id="takenCourses"><p>Loading...</p></div>
 
   <h2>Your Advising Forms</h2>
@@ -34,46 +31,46 @@ h1 { text-align: center; }
 <script>
 const BASE_URL = "https://cs418518-f25-clean.onrender.com/advising";
 const email = localStorage.getItem("userEmail");
-if (!email) { alert("Sign in required."); window.location.href="signin.html"; }
 
-async function fetchData(endpoint) {
-  try {
+// Fetch helper
+async function fetchData(endpoint){
+  try{
     const res = await fetch(`${BASE_URL}/${endpoint}?email=${encodeURIComponent(email)}`);
-    if (!res.ok) throw new Error("Failed to fetch " + endpoint);
+    if(!res.ok) throw new Error(`${endpoint} fetch failed: ${res.status}`);
     return await res.json();
-  } catch (err) {
-    console.error(err);
-    return [];
-  }
+  } catch(e){ console.error(e); return []; }
 }
 
-async function loadCurrentCourses() {
+// Load data
+async function loadCurrentCourses(){
   const courses = await fetchData("current-courses");
-  const container = document.getElementById("currentCourses");
-  container.innerHTML = courses.length ? courses.map(c => `<div class="course-box">${c}</div>`).join("") : "<p>No current courses.</p>";
+  const div = document.getElementById("currentCourses");
+  div.innerHTML = courses.length ? courses.map(c=>`<div class="course-box">${c.course_name}</div>`).join("") : "<p>No current courses.</p>";
 }
 
-async function loadTakenCourses() {
+async function loadTakenCourses(){
   const courses = await fetchData("taken-courses");
-  const container = document.getElementById("takenCourses");
-  container.innerHTML = courses.length ? courses.map(c => `<div class="course-box">${c}</div>`).join("") : "<p>No taken courses.</p>";
+  const div = document.getElementById("takenCourses");
+  div.innerHTML = courses.length ? courses.map(c=>`<div class="course-box">${c.course_name}</div>`).join("") : "<p>No completed courses.</p>";
 }
 
-async function loadForms() {
+async function loadForms(){
   const forms = await fetchData("forms");
-  const container = document.getElementById("formsList");
-  if (!forms.length) { container.innerHTML="<p>No advising forms submitted yet.</p>"; return; }
-  container.innerHTML = forms.map(f => `
+  const div = document.getElementById("formsList");
+  if(!forms.length){ div.innerHTML="<p>No advising forms.</p>"; return; }
+  div.innerHTML = forms.map(f=>`
     <div class="form-row">
-      <div><strong>Term:</strong> ${f.current_term}<br><strong>Status:</strong> ${f.status}<br><small>Submitted: ${new Date(f.created_at).toLocaleString()}</small></div>
-      <a class="view-btn" href="advisingform.html?formId=${f.id}">View / Edit</a>
-    </div>`).join("");
+      <div><strong>Term:</strong> ${f.current_term}</div>
+      <div><strong>Status:</strong> ${f.status}</div>
+      <div><small>Submitted: ${new Date(f.created_at).toLocaleString()}</small></div>
+      <button class="btn" onclick="window.location.href='advisingform.html?formId=${f.id}'">View/Edit</button>
+    </div>
+  `).join("");
 }
 
 loadCurrentCourses();
 loadTakenCourses();
 loadForms();
 </script>
-
 </body>
 </html>
