@@ -1,179 +1,318 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Advising Form</title>
   <link rel="stylesheet" href="style.css" />
+  <style>
+    .course-item {
+      display:flex;
+      justify-content:space-between;
+      background:#f3f3f3;
+      padding:8px;
+      margin-bottom:6px;
+      border-radius:5px;
+    }
+    .remove-btn {
+      background:#c0392b;
+      color:#fff;
+      border:none;
+      padding:4px 8px;
+      border-radius:4px;
+      cursor:pointer;
+    }
+    .disabled-course {
+      opacity:0.45;
+      pointer-events:none;
+    }
+    label { display:block; margin-top:12px; font-weight:600; }
+    select,input { width:100%; padding:8px; margin-top:6px; border-radius:6px; border:1px solid #ccc; }
+    button { margin-top:12px; padding:10px; border-radius:6px; border:none; cursor:pointer; }
+    #addCourseBtn { background:#007bff; color:white; }
+    #saveBtn { background:#0066cc; color:white; width:100%; }
+  </style>
 </head>
 <body>
+  <div class="container">
+    <h1>Course Advising Form</h1>
 
-<div class="container">
-  <h1>Course Advising Form</h1>
+    <form id="advisingForm">
+      <input type="hidden" id="formId" />
 
-  <form id="advisingForm">
-    <input type="hidden" id="userId" />
-    <input type="hidden" id="formId" />
+      <label for="email">Email</label>
+      <input type="email" id="email" readonly />
 
-    <label>Email</label>
-    <input type="email" id="email" readonly />
+      <label for="currentTerm">Current Term</label>
+      <select id="currentTerm" required>
+        <option value="">Select Term</option>
+        <option>Fall 2023</option><option>Spring 2023</option>
+        <option>Fall 2024</option><option>Spring 2024</option>
+        <option>Fall 2025</option><option>Spring 2025</option>
+        <option>Fall 2026</option><option>Spring 2026</option>
+        <option>Fall 2027</option><option>Spring 2027</option>
+      </select>
 
-    <label>Current Term</label>
-    <select id="currentTerm" required>
-      <option value="">Select Term</option>
-      <option>Fall 2024</option><option>Spring 2025</option>
-      <option>Fall 2025</option><option>Spring 2026</option>
-    </select>
+      <label for="lastGPA">Last GPA</label>
+      <select id="lastGPA">
+        <option value="">Select GPA</option>
+        <option>4.0</option><option>3.9</option><option>3.8</option><option>3.7</option>
+        <option>3.6</option><option>3.5</option><option>3.4</option><option>3.3</option>
+        <option>3.2</option><option>3.1</option><option>3.0</option><option>2.9</option>
+        <option>2.8</option><option>2.7</option><option>2.6</option><option>2.5</option>
+      </select>
 
-    <label>Last GPA</label>
-    <select id="lastGPA">
-      <option value="">Select GPA</option>
-      <option>4.0</option><option>3.9</option><option>3.8</option>
-      <option>3.7</option><option>3.6</option><option>3.5</option>
-    </select>
+      <label for="status">Form Status</label>
+      <select id="status">
+        <option value="Pending">Pending</option>
+        <option value="Approved">Approved</option>
+        <option value="Rejected">Rejected</option>
+      </select>
 
-    <label>Last Term Completed</label>
-    <select id="lastTerm">
-      <option value="">Select Term</option>
-      <option>Fall 2023</option><option>Spring 2024</option>
-      <option>Fall 2024</option>
-    </select>
+      <h3 style="margin-top:18px">Add Courses (you can add multiple)</h3>
 
-    <h3>Select Courses</h3>
+      <label for="courseSelect">Choose Course</label>
+      <select id="courseSelect">
+        <option value="">Choose a Course</option>
+        <option>CS 150 – Intro to Programming</option>
+        <option>CS 250 – Problem Solving</option>
+        <option>CS 255 – Computer Architecture</option>
+        <option>CS 330 – Object Oriented Programming</option>
+        <option>CS 350 – Software Engineering</option>
+        <option>CS 355 – Principles of Networking</option>
+        <option>CS 361 – Data Structures</option>
+        <option>CS 381 – Database Concepts</option>
+        <option>CS 410 – Ethics in CS</option>
+        <option>CS 417 – Algorithms</option>
+        <option>CS 421 – Web Programming</option>
+        <option>CS 450 – Operating Systems</option>
+        <option>CS 460 – Cybersecurity Fundamentals</option>
+        <option>CS 470 – Artificial Intelligence</option>
+        <option>CS 480 – Mobile App Development</option>
+      </select>
 
-    <label>Choose Course</label>
-    <select id="courseSelect">
-      <option value="">Choose a Course</option>
-      <option>CS 150 – Intro to Programming</option>
-      <option>CS 250 – Problem Solving</option>
-      <option>CS 361 – Data Structures</option>
-    </select>
+      <label for="courseStatus">Course Status</label>
+      <select id="courseStatus">
+        <option value="Planned">Planned</option>
+        <option value="Current">Current</option>
+        <option value="Completed">Completed</option>
+      </select>
 
-    <label>Course Status</label>
-    <select id="courseStatus">
-      <option value="Planned">Planned</option>
-      <option value="Current">Current</option>
-      <option value="Completed">Completed</option>
-    </select>
+      <label for="courseTerm">Course Term</label>
+      <select id="courseTerm">
+        <option value="">Select Term</option>
+        <option>Fall 2023</option><option>Spring 2023</option>
+        <option>Fall 2024</option><option>Spring 2024</option>
+        <option>Fall 2025</option><option>Spring 2025</option>
+        <option>Fall 2026</option><option>Spring 2026</option>
+        <option>Fall 2027</option><option>Spring 2027</option>
+      </select>
 
-    <label>Course Term</label>
-    <select id="courseTerm">
-      <option value="">Select Term</option>
-      <option>Fall 2024</option><option>Spring 2025</option>
-    </select>
+      <button type="button" id="addCourseBtn">Add Course</button>
 
-    <button type="button" id="addCourseBtn">Add Course</button>
+      <div id="selectedCoursesList" style="margin-top:12px"></div>
 
-    <div id="selectedCoursesList"></div>
+      <button type="submit" id="saveBtn">Save Advising Form</button>
+      <button type="button" style="margin-top:8px" onclick="window.location.href='classes.html'">Back</button>
+    </form>
+  </div>
 
-    <button type="submit">Save Advising Form</button>
-  </form>
-</div>
+  <script>
+    const BASE_URL = "https://cs418518-f25-clean.onrender.com/advising";
+    const email = localStorage.getItem("userEmail");
+    const params = new URLSearchParams(window.location.search);
+    const formId = params.get("formId");
 
-<script>
-const BASE_URL = "https://cs418518-f25-clean.onrender.com/advising";
-
-let email = localStorage.getItem("userEmail");
-document.getElementById("email").value = email;
-
-let selectedCourses = [];
-let userId = null;
-
-/* ---------------------------------------------------------
-   GET USER ID
---------------------------------------------------------- */
-fetch(`https://cs418518-f25-clean.onrender.com/users/by-email?email=${email}`)
-  .then(res => res.json())
-  .then(data => {
-    userId = data.user_id;
-    document.getElementById("userId").value = userId;
-
-    loadTakenCourses();
-  });
-
-/* ---------------------------------------------------------
-   LOAD TAKEN COURSES
---------------------------------------------------------- */
-function loadTakenCourses() {
-  fetch(`${BASE_URL}/courses/${userId}`)
-    .then(res => res.json())
-    .then(data => {
-      let taken = data.map(c => c.course_name);
-      disableTaken(taken);
-    });
-}
-
-function disableTaken(taken) {
-  const options = document.querySelectorAll("#courseSelect option");
-  options.forEach(opt => {
-    if (taken.includes(opt.textContent)) {
-      opt.disabled = true;
-      opt.style.opacity = "0.4";
+    if (!email) {
+      alert("Please sign in.");
+      window.location.href = "signin.html";
     }
-  });
-}
+    document.getElementById("email").value = email;
 
-/* ---------------------------------------------------------
-   ADD COURSE
---------------------------------------------------------- */
-document.getElementById("addCourseBtn").addEventListener("click", () => {
-  const course = document.getElementById("courseSelect").value;
-  const status = document.getElementById("courseStatus").value;
-  const term = document.getElementById("courseTerm").value;
+    let selectedCourses = [];
+    let takenCourses = [];
 
-  if (!course || !term) return alert("Choose course + term.");
+    // load already-taken courses (status = 'Completed') to disable them
+    async function loadTakenCourses() {
+      try {
+        const res = await fetch(`${BASE_URL}/taken-courses?email=${encodeURIComponent(email)}`);
+        if (!res.ok) { console.warn("taken-courses fetch failed"); return; }
+        const data = await res.json(); // array of course_name strings
+        takenCourses = Array.isArray(data) ? data : [];
+        disableTakenCourses();
+      } catch (err) {
+        console.error("Error loading taken courses:", err);
+      }
+    }
 
-  selectedCourses.push({ course_name: course, status, term });
-  renderCourses();
-});
+    function disableTakenCourses() {
+      const options = document.querySelectorAll("#courseSelect option");
+      options.forEach(opt => {
+        // skip placeholder
+        if (!opt.value) return;
+        // compare trimmed strings
+        if (takenCourses.some(t => t.trim() === opt.textContent.trim())) {
+          opt.classList.add("disabled-course");
+          opt.disabled = true;
+          opt.textContent = `${opt.textContent} (Taken)`;
+        }
+      });
+    }
 
-function renderCourses() {
-  const list = document.getElementById("selectedCoursesList");
-  list.innerHTML = "";
+    // add course button
+    document.getElementById("addCourseBtn").addEventListener("click", () => {
+      const courseName = document.getElementById("courseSelect").value;
+      const courseStatus = document.getElementById("courseStatus").value;
+      const courseTerm = document.getElementById("courseTerm").value;
 
-  selectedCourses.forEach((c, i) => {
-    const div = document.createElement("div");
-    div.innerHTML = `${c.course_name} — ${c.status} (${c.term})
-      <button onclick="removeCourse(${i})">X</button>`;
-    list.appendChild(div);
-  });
-}
+      if (!courseName) { alert("Please choose a course."); return; }
+      if (!courseTerm) { alert("Please select a term for the course."); return; }
 
-function removeCourse(i) {
-  selectedCourses.splice(i, 1);
-  renderCourses();
-}
+      // prevent adding a taken course
+      if (takenCourses.some(t => t.trim() === courseName.trim()) && courseStatus !== "Completed") {
+        alert("This course is already completed — you cannot add it as Planned/Current.");
+        return;
+      }
 
-/* ---------------------------------------------------------
-   SAVE FORM
---------------------------------------------------------- */
-document.getElementById("advisingForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
+      // prevent duplicates in this form
+      if (selectedCourses.some(c => c.course_name === courseName && c.term === courseTerm)) {
+        alert("This course + term is already added to the list.");
+        return;
+      }
 
-  const payload = {
-    userId,
-    currentTerm: document.getElementById("currentTerm").value,
-    lastGpa: document.getElementById("lastGPA").value,
-    lastTerm: document.getElementById("lastTerm").value,
-    selectedCourses
-  };
+      selectedCourses.push({
+        course_name: courseName,
+        status: courseStatus,
+        term: courseTerm
+      });
 
-  const res = await fetch(`${BASE_URL}/save`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
+      renderSelectedCourses();
+    });
 
-  const result = await res.json();
+    function renderSelectedCourses() {
+      const container = document.getElementById("selectedCoursesList");
+      container.innerHTML = "";
+      if (selectedCourses.length === 0) {
+        container.innerHTML = "<p class='muted'>No courses added yet.</p>";
+        return;
+      }
+      selectedCourses.forEach((c, i) => {
+        const row = document.createElement("div");
+        row.className = "course-item";
+        row.innerHTML = `
+          <div>
+            <strong>${c.course_name}</strong><br/>
+            <small>${c.status} — ${c.term}</small>
+          </div>
+          <div>
+            <button class="remove-btn" type="button" onclick="removeCourse(${i})">Remove</button>
+          </div>
+        `;
+        container.appendChild(row);
+      });
+    }
 
-  if (result.advisingId) {
-    alert("Saved!");
-    window.location.href = "classes.html";
-  } else {
-    alert("Error saving form.");
-  }
-});
-</script>
+    window.removeCourse = function (index) {
+      selectedCourses.splice(index, 1);
+      renderSelectedCourses();
+    };
 
+    // load form when editing
+    async function loadFormIfEditing() {
+      if (!formId) return;
+      try {
+        const res = await fetch(`${BASE_URL}/form?formId=${encodeURIComponent(formId)}`);
+        if (!res.ok) { console.warn("form fetch failed"); return; }
+        const data = await res.json();
+
+        // fill parent fields
+        if (data.current_term) document.getElementById("currentTerm").value = data.current_term;
+        if (data.last_gpa) document.getElementById("lastGPA").value = data.last_gpa;
+        if (data.status) document.getElementById("status").value = data.status;
+
+        // selectedCourses can be either:
+        // (A) array of strings (old behavior) OR
+        // (B) array of objects { course_name, status, term } (new behavior)
+        const incoming = data.selectedCourses || [];
+        selectedCourses = incoming.map(item => {
+          if (typeof item === "string") {
+            // string -> make object, default status = Completed if present in takenCourses else Planned
+            const status = takenCourses.includes(item) ? "Completed" : "Planned";
+            // prefer form's current_term as term if nothing else
+            return { course_name: item, status, term: data.current_term || "" };
+          } else {
+            // already an object
+            return {
+              course_name: item.course_name || item.courseName || "",
+              status: item.status || "Planned",
+              term: item.term || data.current_term || ""
+            };
+          }
+        });
+
+        renderSelectedCourses();
+
+        // if form finalized -> lock inputs
+        if (data.status === "Approved" || data.status === "Rejected") {
+          document.querySelectorAll("select, input, button").forEach(el => el.disabled = true);
+          // keep "Back" maybe shown as link; hide save
+          const saveBtn = document.getElementById("saveBtn");
+          if (saveBtn) saveBtn.style.display = "none";
+        }
+      } catch (err) {
+        console.error("Error loading form:", err);
+      }
+    }
+
+    // initial load
+    loadTakenCourses().then(loadFormIfEditing);
+
+    // save handler: send payload that matches your existing backend (email + currentTerm + lastGPA + status + selectedCourses)
+    document.getElementById("advisingForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      // basic validation
+      if (!document.getElementById("currentTerm").value) {
+        alert("Please select a current term.");
+        return;
+      }
+
+      if (selectedCourses.length === 0) {
+        if (!confirm("No courses added — submit empty advising form?")) {
+          return;
+        }
+      }
+
+      const payload = {
+        formId: formId || null,
+        email: email,
+        currentTerm: document.getElementById("currentTerm").value,
+        lastGPA: document.getElementById("lastGPA").value || null,
+        status: document.getElementById("status").value,
+        selectedCourses // array of { course_name, status, term }
+      };
+
+      try {
+        const res = await fetch(`${BASE_URL}/save`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        const json = await res.json();
+        if (!res.ok) {
+          console.error("Save failed:", json);
+          alert("Error saving form. See console for details.");
+          return;
+        }
+
+        alert("Form saved!");
+        window.location.href = "classes.html";
+      } catch (err) {
+        console.error("Network/save error:", err);
+        alert("Network error while saving. Check console.");
+      }
+    });
+  </script>
 </body>
 </html>
