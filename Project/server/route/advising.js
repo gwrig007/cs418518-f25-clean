@@ -10,11 +10,11 @@ async function getUserIdByEmail(email) {
   if (!email) return null;
 
   const [[user]] = await pool.query(
-    "SELECT user_id FROM user_information WHERE email = ?",
+    "SELECT u_id FROM user_information WHERE u_email = ?",
     [email]
   );
 
-  return user ? user.user_id : null;
+  return user ? user.u_id : null;
 }
 
 /* ---------------------------
