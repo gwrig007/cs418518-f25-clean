@@ -7,93 +7,49 @@ import { sendEmail } from "../utils/sendmail.js"; // ✅ uses your SendGrid help
 
 const router = express.Router();
 
+
+
 /* ============================================================
-   ✅ REGISTER
+   ✅ LOGIN + reCAPTCHA + SEND OTP VIA SENDGRID
 ============================================================ */
 router.post("/register", async (req, res) => {
   try {
     const { firstName, lastName, email, password } = req.body;
 
+    // ✅ Validate input (prevents NULL errors)
+    if (!firstName || !lastName || !email || !password) {
+      return res.status(400).json({ message: "All fields are required." });
+    }
+
+    // ✅ Prevent duplicate email crash
+    const [[existing]] = await pool.query(
+      "SELECT u_id FROM user_information WHERE u_email = ?",
+      [email]
+    );
+
+    if (existing) {
+      return res.status(409).json({ message: "Email already registered." });
+    }
+
+    // ✅ Hash password
     const hashed = await bcrypt.hash(password, 10);
 
+    // ✅ Insert user
     await pool.query(
-      `INSERT INTO user_information (u_first_name, u_last_name, u_email, u_password, is_verified)
+      `INSERT INTO user_information 
+       (u_first_name, u_last_name, u_email, u_password, is_verified)
        VALUES (?, ?, ?, ?, 1)`,
       [firstName, lastName, email, hashed]
     );
 
     res.json({ message: "Registration successful!" });
+
   } catch (err) {
-    console.error("REGISTER ERROR:", err);
+    console.error("REGISTER ERROR:", err.message || err);
     res.status(500).json({ message: "Registration failed." });
   }
 });
 
-/* ============================================================
-   ✅ LOGIN + reCAPTCHA + SEND OTP VIA SENDGRID
-============================================================ */
-router.post("/login", async (req, res) => {
-  try {
-    const { email, password, recaptcha } = req.body;
-
-    if (!recaptcha)
-      return res.status(400).json({ message: "Captcha required." });
-
-    // ✅ Verify reCAPTCHA (TEST SECRET — works anywhere)
-    const captchaRes = await fetch(
-      "https://www.google.com/recaptcha/api/siteverify",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: `secret=6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe&response=${recaptcha}`
-      }
-    );
-
-    const captcha = await captchaRes.json();
-    if (!captcha.success)
-      return res.status(401).json({ message: "Captcha failed." });
-
-    // ✅ Verify user
-    const [[user]] = await pool.query(
-      "SELECT u_password FROM user_information WHERE u_email = ?",
-      [email]
-    );
-
-    if (!user)
-      return res.status(401).json({ message: "Invalid credentials." });
-
-    const match = await bcrypt.compare(password, user.u_password);
-    if (!match)
-      return res.status(401).json({ message: "Invalid credentials." });
-
-    // ✅ Generate OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-
-    await pool.query(
-      "UPDATE user_information SET otp_code = ?, otp_expires_at = ? WHERE u_email = ?",
-      [otp, expires, email]
-    );
-
-    // ✅ Send OTP via SendGrid
-    await sendEmail(
-      email,
-      "Your Login Verification Code",
-      `
-      <h2>ODU Course Advising Portal</h2>
-      <p>Your one-time login code is:</p>
-      <h1>${otp}</h1>
-      <p>This code expires in 10 minutes.</p>
-      `
-    );
-
-    res.json({ message: "OTP sent to email.", requireOTP: true });
-
-  } catch (err) {
-    console.error("LOGIN ERROR:", err);
-    res.status(500).json({ message: "Server error." });
-  }
-});
 
 /* ============================================================
    ✅ VERIFY OTP
