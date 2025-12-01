@@ -88,10 +88,12 @@ document.getElementById("newFormBtn").onclick = () => {
   window.location.href = "advisingform.html";
 };
 
-// Helper to fetch data
-async function fetchData(endpoint) {
+// Helper to fetch data (supports email OR custom query params)
+async function fetchData(endpoint, query = null) {
   try {
-    const res = await fetch(`${BASE_URL}/${endpoint}?email=${encodeURIComponent(email)}`);
+    const q = query ? query : `email=${encodeURIComponent(email)}`;
+    const res = await fetch(`${BASE_URL}/${endpoint}?${q}`);
+
     if (!res.ok) throw new Error(`${endpoint} fetch failed: ${res.status}`);
     return await res.json();
   } catch (err) {
@@ -99,6 +101,7 @@ async function fetchData(endpoint) {
     return [];
   }
 }
+
 
 // Load Current Courses
 async function loadCurrentCourses() {
