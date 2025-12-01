@@ -3,6 +3,8 @@ import { pool } from "../database/connection.js";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
+import fetch from "node-fetch";
+
 
 const router = express.Router();
 
@@ -44,22 +46,47 @@ router.post("/register", async (req, res) => {
 ============================================================ */
 router.post("/login", async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, recaptcha } = req.body;
 
+    // ✅ Make sure captcha exists
+    if (!recaptcha) {
+      return res.status(400).json({ message: "Captcha is required." });
+    }
+
+    // ✅ Verify reCAPTCHA with Google (TEST SECRET KEY — works on any domain)
+    const response = await fetch("https://www.google.com/recaptcha/api/siteverify", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: `secret=6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe&response=${recaptcha}`
+    });
+
+    const captchaResult = await response.json();
+
+    if (!captchaResult.success) {
+      return res.status(401).json({ message: "reCAPTCHA validation failed." });
+    }
+
+    // ✅ Normal login logic (unchanged)
     const [[user]] = await pool.query(
       "SELECT * FROM user_information WHERE u_email = ?",
       [email]
     );
 
-    if (!user) return res.status(404).json({ message: "Email not found." });
+    if (!user) {
+      return res.status(404).json({ message: "Invalid credentials." });
+    }
 
     const match = await bcrypt.compare(password, user.u_password);
-    if (!match) return res.status(401).json({ message: "Incorrect password." });
+    if (!match) {
+      return res.status(401).json({ message: "Invalid credentials." });
+    }
 
+    // ✅ Login success
     res.json({ message: "Login successful!", userId: user.u_id });
+
   } catch (err) {
     console.error("LOGIN ERROR:", err);
-    res.status(500).json({ message: "Server error during login." });
+    res.status(500).json({ message: "Server error." });
   }
 });
 

@@ -7,6 +7,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sign In | ODU Course Advising Portal</title>
   <link rel="stylesheet" href="style.css" />
+
+  <!-- ✅ reCAPTCHA Script -->
+  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+
   <style>
     body {
       background: #fff;
@@ -64,8 +68,10 @@
     .link a { color: #007bff; text-decoration: none; }
     .link a:hover { text-decoration: underline; }
     .msg { text-align:center;margin-top:10px;color:#b11f24; }
+    .captcha-box { margin-top:15px;text-align:center; }
   </style>
 </head>
+
 <body>
   <div class="container">
     <h1>Student Sign In</h1>
@@ -75,6 +81,14 @@
 
     <label for="password">Password</label>
     <input type="password" id="password" placeholder="Enter password" />
+
+    <!-- ✅ CAPTCHA -->
+    <div class="captcha-box">
+      <div
+        class="g-recaptcha"
+        data-sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI">
+      </div>
+    </div>
 
     <button id="signinBtn">Sign In</button>
 
@@ -99,9 +113,16 @@
       msg.textContent = "";
       const email = document.getElementById("email").value.trim();
       const password = document.getElementById("password").value.trim();
+      const captcha = grecaptcha.getResponse();
 
       if (!email || !password) {
         msg.textContent = "Please enter both email and password.";
+        return;
+      }
+
+      // ✅ CAPTCHA CHECK
+      if (!captcha) {
+        msg.textContent = "Please verify you are not a robot.";
         return;
       }
 
@@ -109,7 +130,7 @@
         const res = await fetch(`${API_BASE}/user/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
+          body: JSON.stringify({ email, password, recaptcha: captcha })
         });
 
         const data = await res.json();
@@ -121,17 +142,18 @@
 
         localStorage.setItem("pendingEmail", email);
         msg.style.color = "#0f5132";
-        msg.textContent = "OTP sent! Please verify.";
+        msg.textContent = "Login successful!";
 
-        // redirect to OTP page
         setTimeout(() => {
           window.location.href = "verify-otp.html";
-        }, 1000);
+        }, 800);
+
       } catch (err) {
         console.error(err);
         msg.textContent = "Server error. Please try again later.";
       }
     });
   </script>
+
 </body>
 </html>
