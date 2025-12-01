@@ -3,9 +3,9 @@ import { pool } from "../database/connection.js";
 
 const router = express.Router();
 
-/* ==========================
-   🔹 GET USER ID
-========================== */
+/* ============================================================
+   🔹 GET USER ID FROM EMAIL
+============================================================ */
 async function getUserIdByEmail(email) {
   if (!email) return null;
 
@@ -17,9 +17,9 @@ async function getUserIdByEmail(email) {
   return user ? user.u_id : null;
 }
 
-/* ==========================
-   ✅ CURRENT COURSES (WITH TERM)
-========================== */
+/* ============================================================
+   ✅ CURRENT COURSES
+============================================================ */
 router.get("/current-courses", async (req, res) => {
   try {
     const { email } = req.query;
@@ -32,16 +32,15 @@ router.get("/current-courses", async (req, res) => {
     );
 
     res.json(rows);
-
   } catch (err) {
     console.error("CURRENT COURSES ERROR:", err);
     res.status(500).json({ message: "Error loading current courses" });
   }
 });
 
-/* ==========================
-   ✅ TAKEN COURSES (FIXED TABLE)
-========================== */
+/* ============================================================
+   ✅ TAKEN COURSES
+============================================================ */
 router.get("/taken-courses", async (req, res) => {
   try {
     const { email } = req.query;
@@ -54,16 +53,15 @@ router.get("/taken-courses", async (req, res) => {
     );
 
     res.json(rows);
-
   } catch (err) {
     console.error("TAKEN COURSES ERROR:", err);
     res.status(500).json({ message: "Error loading taken courses" });
   }
 });
 
-/* ==========================
+/* ============================================================
    ✅ LAST COURSES
-========================== */
+============================================================ */
 router.get("/last-courses", async (req, res) => {
   try {
     const { email } = req.query;
@@ -76,16 +74,15 @@ router.get("/last-courses", async (req, res) => {
     );
 
     res.json(rows);
-
   } catch (err) {
     console.error("LAST COURSES ERROR:", err);
     res.status(500).json({ message: "Error loading last courses" });
   }
 });
 
-/* ==========================
-   ✅ HISTORY (FORMS)
-========================== */
+/* ============================================================
+   ✅ FORM HISTORY
+============================================================ */
 router.get("/forms", async (req, res) => {
   try {
     const { email } = req.query;
@@ -94,23 +91,22 @@ router.get("/forms", async (req, res) => {
 
     const [rows] = await pool.query(
       `SELECT id, current_term, status, created_at
-         FROM advising 
+         FROM advising
         WHERE user_id = ?
      ORDER BY created_at DESC`,
       [userId]
     );
 
     res.json(rows);
-
   } catch (err) {
     console.error("FORMS ERROR:", err);
     res.status(500).json([]);
   }
 });
 
-/* ==========================
-   ✅ LOAD SINGLE FORM
-========================== */
+/* ============================================================
+   ✅ LOAD SINGLE FORM (PLANNED + COMPLETED)
+============================================================ */
 router.get("/form", async (req, res) => {
   try {
     const { formId } = req.query;
@@ -120,32 +116,39 @@ router.get("/form", async (req, res) => {
       [formId]
     );
 
-    if (!form)
-      return res.status(404).json({ message: "Form not found" });
+    if (!form) return res.status(404).json({ message: "Form not found" });
 
     const [courses] = await pool.query(
-      "SELECT course_name, term, status FROM advising_courses WHERE advising_id = ?",
+      `SELECT 
+          id,
+          course_level,
+          course_name,
+          status,
+          term
+        FROM advising_courses
+        WHERE advising_id = ?`,
       [formId]
     );
 
     res.json({
       form,
       selectedCourses: courses.map(c => ({
+        id: c.id,
         name: c.course_name,
-        term: c.term,
-        status: c.status
+        level: c.course_level || "",
+        status: c.status,
+        term: c.term
       }))
     });
-
   } catch (err) {
     console.error("LOAD FORM ERROR:", err);
     res.status(500).json({ message: "Error loading form" });
   }
 });
 
-/* ==========================
+/* ============================================================
    ✅ SAVE ADVISING FORM
-========================== */
+============================================================ */
 router.post("/save", async (req, res) => {
   try {
     const { formId, email, currentTerm, lastGPA, selectedCourses } = req.body;
@@ -155,15 +158,14 @@ router.post("/save", async (req, res) => {
     }
 
     const userId = await getUserIdByEmail(email);
-    if (!userId)
-      return res.status(400).json({ message: "Invalid user" });
+    if (!userId) return res.status(400).json({ message: "Invalid user" });
 
     let advisingId = formId;
 
-    /* ---------- NEW FORM ---------- */
+    /* ---------- CREATE FORM ---------- */
     if (!formId) {
       const [result] = await pool.query(
-        `INSERT INTO advising 
+        `INSERT INTO advising
           (user_id, current_term, last_gpa, last_term, status, created_at)
          VALUES (?, ?, ?, ?, 'Pending', NOW())`,
         [userId, currentTerm, lastGPA || null, currentTerm]
@@ -189,13 +191,13 @@ router.post("/save", async (req, res) => {
       );
     }
 
-    /* ---------- CLEAR PREVIOUS COURSES ---------- */
+    /* ---------- CLEAR OLD PLANNED COURSES ---------- */
     await pool.query(
       "DELETE FROM advising_courses WHERE advising_id = ? AND status = 'Planned'",
       [advisingId]
     );
 
-    /* ---------- INSERT NEW COURSES ---------- */
+    /* ---------- INSERT NEW PLANNED COURSES ---------- */
     for (const courseName of selectedCourses) {
       await pool.query(
         `INSERT INTO advising_courses
@@ -206,7 +208,6 @@ router.post("/save", async (req, res) => {
     }
 
     res.json({ success: true, advisingId });
-
   } catch (err) {
     console.error("SAVE ERROR FULL:", err);
     res.status(500).json({

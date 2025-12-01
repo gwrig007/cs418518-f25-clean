@@ -94,18 +94,19 @@ const urlParams = new URLSearchParams(window.location.search);
 const formId = urlParams.get("formId");
 
 if (!email) {
-  alert("Please sign in first.");
+  alert("Please sign in.");
   window.location.href = "signin.html";
 }
 document.getElementById("email").value = email;
 
-// Populate GPA list
+// Populate GPA dropdown
 const gpaSelect = document.getElementById("lastGPA");
 for (let g = 4.0; g >= 0; g -= 0.01) {
-  gpaSelect.innerHTML += `<option value="${g.toFixed(2)}">${g.toFixed(2)}</option>`;
+  const val = g.toFixed(2);
+  gpaSelect.innerHTML += `<option value="${val}">${val}</option>`;
 }
 
-// All 15 available courses
+// Courses
 const allCourses = [
   "CS 150 – Intro to Programming",
   "CS 250 – Problem Solving",
@@ -124,94 +125,80 @@ const allCourses = [
   "CS 450 – Capstone Project"
 ];
 
-// Fetch taken courses
+// Taken courses fetched from DB
 let takenCourses = [];
 
+// ----------------------------------
+// LOAD TAKEN COURSES
+// ----------------------------------
 async function loadTakenCourses() {
-  try {
-    const res = await fetch(`${BASE_URL}/taken-courses?email=${email}`);
-    takenCourses = await res.json();
-  } catch (err) {
-    console.error("Error loading taken courses", err);
-    takenCourses = [];
-  }
+  const res = await fetch(`${BASE_URL}/taken-courses?email=${encodeURIComponent(email)}`);
+  const data = await res.json();
+  takenCourses = data.map(c => c.course_name);
 }
 
-// Render the 15 rows (course + status)
+// ----------------------------------
+// RENDER 15 DROPDOWNS
+// ----------------------------------
 async function renderCourseRows(selectedCourses = []) {
   await loadTakenCourses();
-
   const wrapper = document.getElementById("courses-wrapper");
   wrapper.innerHTML = "";
 
   for (let i = 0; i < 15; i++) {
-    const prevCourse = selectedCourses[i]?.course || "";
-    const prevStatus = selectedCourses[i]?.status || "Planned";
+    const prev = selectedCourses[i] || {};
 
-    let courseOptions = `<option value="">Select a course</option>`;
+    let options = `<option value="">Select course</option>`;
 
     allCourses.forEach(course => {
-      const disabled = takenCourses.includes(course) ? "disabled class='disabled-option'" : "";
-      const selected = prevCourse === course ? "selected" : "";
-      courseOptions += `<option value="${course}" ${selected} ${disabled}>${course}</option>`;
+      const isTaken = takenCourses.includes(course);
+      const disabled = isTaken ? `disabled class="disabled-option"` : "";
+      const selected = prev.course === course ? "selected" : "";
+      const label = isTaken ? `${course} (Completed)` : course;
+
+      options += `<option value="${course}" ${disabled} ${selected}>${label}</option>`;
     });
 
     wrapper.innerHTML += `
       <div class="course-row">
-        <select class="courseSelect" data-index="${i}">
-          ${courseOptions}
-        </select>
-
-        <select class="statusSelect" data-index="${i}">
-          <option ${prevStatus==="Planned" ? "selected":""}>Planned</option>
-          <option ${prevStatus==="In Progress" ? "selected":""}>In Progress</option>
-          <option ${prevStatus==="Completed" ? "selected":""}>Completed</option>
-        </select>
+        <select class="courseSelect">${options}</select>
       </div>
     `;
   }
 }
 
-// Load existing form (edit mode)
+// ----------------------------------
+// LOAD EXISTING FORM IF EDITING
+// ----------------------------------
 async function loadFormForEditing() {
   if (!formId) {
-    renderCourseRows([]);
+    renderCourseRows();
     return;
   }
 
-  try {
-    const res = await fetch(`${BASE_URL}/form?formId=${formId}`);
-    const data = await res.json();
+  const res = await fetch(`${BASE_URL}/form?formId=${formId}`);
+  const data = await res.json();
 
-    document.getElementById("currentTerm").value = data.form.current_term;
-    document.getElementById("lastGPA").value = data.form.last_gpa.toFixed(2);
-    document.getElementById("status").value = data.form.status;
+  document.getElementById("currentTerm").value = data.form.current_term;
+  document.getElementById("lastGPA").value = Number(data.form.last_gpa).toFixed(2);
+  document.getElementById("status").value = data.form.status;
 
-    // Convert stored selected courses into array
-    const selectedData = data.selectedCourses.map(item => ({
-      course: item.course_name,
-      status: item.status
-    }));
+  const selected = data.selectedCourses.map(c => ({
+    course: c.name
+  }));
 
-    renderCourseRows(selectedData);
-
-  } catch (err) {
-    console.error("Error loading form", err);
-    renderCourseRows([]);
-  }
+  renderCourseRows(selected);
 }
 
-// Submit form
+// ----------------------------------
+// SUBMIT FORM
+// ----------------------------------
 document.getElementById("advisingForm").addEventListener("submit", async e => {
   e.preventDefault();
 
-  const courseSelects = [...document.querySelectorAll(".courseSelect")];
-  const statusSelects = [...document.querySelectorAll(".statusSelect")];
-
-  const selectedCourses = courseSelects.map((sel, i) => ({
-    course: sel.value,
-    status: statusSelects[i].value
-  })).filter(item => item.course !== "");
+  const selectedCourses = [...document.querySelectorAll(".courseSelect")]
+    .map(sel => sel.value)
+    .filter(Boolean);
 
   const payload = {
     formId,
@@ -221,28 +208,26 @@ document.getElementById("advisingForm").addEventListener("submit", async e => {
     selectedCourses
   };
 
-  try {
-    const res = await fetch(`${BASE_URL}/save`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
+  const res = await fetch(`${BASE_URL}/save`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
 
-    const data = await res.json();
-    if (data.success) {
-      alert("Advising form submitted!");
-      window.location.href = "classes.html";
-    }
+  const data = await res.json();
 
-  } catch (err) {
-    console.error("Save error:", err);
-    alert("Error saving form.");
+  if (data.success) {
+    alert("Advising form saved!");
+    window.location.href = "classes.html";
+  } else {
+    alert("Failed to save.");
   }
 });
 
-// init
+// INIT
 loadFormForEditing();
 </script>
+
 
 </body>
 </html>
