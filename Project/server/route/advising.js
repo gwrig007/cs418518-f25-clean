@@ -32,6 +32,7 @@ router.get("/current-courses", async (req, res) => {
     );
 
     res.json(rows);
+
   } catch (err) {
     console.error("CURRENT COURSES ERROR:", err);
     res.status(500).json({ message: "Error loading current courses" });
@@ -39,7 +40,7 @@ router.get("/current-courses", async (req, res) => {
 });
 
 /* ============================================================
-   ✅ TAKEN COURSES
+   ✅ TAKEN COURSES (Feeds Frontend Dropdown Disabling)
 ============================================================ */
 router.get("/taken-courses", async (req, res) => {
   try {
@@ -47,36 +48,19 @@ router.get("/taken-courses", async (req, res) => {
     const userId = await getUserIdByEmail(email);
     if (!userId) return res.json([]);
 
+    // ✅ Only COMPLETED courses should be disabled
     const [rows] = await pool.query(
-      "SELECT course_name, term FROM taken_courses WHERE user_id = ?",
+      `SELECT course_name, term 
+       FROM advising_courses 
+       WHERE user_id = ? AND status = 'Completed'`,
       [userId]
     );
 
     res.json(rows);
+
   } catch (err) {
     console.error("TAKEN COURSES ERROR:", err);
     res.status(500).json({ message: "Error loading taken courses" });
-  }
-});
-
-/* ============================================================
-   ✅ LAST COURSES
-============================================================ */
-router.get("/last-courses", async (req, res) => {
-  try {
-    const { email } = req.query;
-    const userId = await getUserIdByEmail(email);
-    if (!userId) return res.json([]);
-
-    const [rows] = await pool.query(
-      "SELECT course_name, term FROM last_courses WHERE user_id = ?",
-      [userId]
-    );
-
-    res.json(rows);
-  } catch (err) {
-    console.error("LAST COURSES ERROR:", err);
-    res.status(500).json({ message: "Error loading last courses" });
   }
 });
 
@@ -98,6 +82,7 @@ router.get("/forms", async (req, res) => {
     );
 
     res.json(rows);
+
   } catch (err) {
     console.error("FORMS ERROR:", err);
     res.status(500).json([]);
@@ -105,7 +90,7 @@ router.get("/forms", async (req, res) => {
 });
 
 /* ============================================================
-   ✅ LOAD SINGLE FORM (PLANNED + COMPLETED)
+   ✅ LOAD SINGLE FORM
 ============================================================ */
 router.get("/form", async (req, res) => {
   try {
@@ -119,27 +104,21 @@ router.get("/form", async (req, res) => {
     if (!form) return res.status(404).json({ message: "Form not found" });
 
     const [courses] = await pool.query(
-      `SELECT 
-          id,
-          course_level,
-          course_name,
-          status,
-          term
-        FROM advising_courses
-        WHERE advising_id = ?`,
+      `SELECT course_name, status, term
+       FROM advising_courses
+       WHERE advising_id = ?`,
       [formId]
     );
 
     res.json({
       form,
       selectedCourses: courses.map(c => ({
-        id: c.id,
         name: c.course_name,
-        level: c.course_level || "",
         status: c.status,
         term: c.term
       }))
     });
+
   } catch (err) {
     console.error("LOAD FORM ERROR:", err);
     res.status(500).json({ message: "Error loading form" });
@@ -191,13 +170,13 @@ router.post("/save", async (req, res) => {
       );
     }
 
-    /* ---------- CLEAR OLD PLANNED COURSES ---------- */
+    /* ---------- CLEAR PREVIOUS PLANNED ---------- */
     await pool.query(
       "DELETE FROM advising_courses WHERE advising_id = ? AND status = 'Planned'",
       [advisingId]
     );
 
-    /* ---------- INSERT NEW PLANNED COURSES ---------- */
+    /* ---------- INSERT NEW PLANNED ---------- */
     for (const courseName of selectedCourses) {
       await pool.query(
         `INSERT INTO advising_courses
@@ -208,8 +187,9 @@ router.post("/save", async (req, res) => {
     }
 
     res.json({ success: true, advisingId });
+
   } catch (err) {
-    console.error("SAVE ERROR FULL:", err);
+    console.error("SAVE ERROR:", err);
     res.status(500).json({
       message: "Database error",
       error: err.sqlMessage || err.message
