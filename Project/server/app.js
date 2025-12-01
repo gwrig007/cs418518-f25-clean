@@ -13,100 +13,57 @@ import advising from "./route/advising.js";
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-/* ------------------------------------------------------------------
-   ✅ SECURITY — Prevent Clickjacking + XSS
------------------------------------------------------------------- */
-app.use(
-  helmet({
-    frameguard: { action: "deny" },
-  })
-);
+// SECURITY
+app.use(helmet({ frameguard: { action: "deny" } }));
 
-/* ------------------------------------------------------------------
-   ✅ FORCE CLEVER CLOUD DB CONNECTION (crash app if DB unreachable)
------------------------------------------------------------------- */
-async function connectDB() {
-  try {
-    await pool.query("SELECT 1");
-    console.log("✅ Clever Cloud MySQL Connected");
-  } catch (err) {
-    console.error("❌ Clever Cloud MySQL Connection Failed:");
-    console.error(err.message);
-    process.exit(1); // Kill app if DB missing
-  }
-}
+// JSON
+app.use(bodyParser.json());
+app.use(express.json());
 
-await connectDB();
+// CORS
+app.use(cors({
+  origin: [
+    "http://127.0.0.1:5500",
+    "http://localhost:5173",
+    "https://oduadvisingportal.netlify.app",
+  ],
+  credentials: true,
+}));
 
-/* ------------------------------------------------------------------
-   🔧 Keep MySQL Alive (prevents Clever Cloud timeout)
------------------------------------------------------------------- */
-setInterval(async () => {
-  try {
-    await pool.query("SELECT 1");
-    console.log("🔄 MySQL keep-alive ping");
-  } catch (err) {
-    console.error("MySQL KeepAlive Error:", err);
-  }
-}, 1000 * 60 * 4);
-
-/* ------------------------------------------------------------------
-   📁 Serve client files
------------------------------------------------------------------- */
+// STATIC FILES
 app.use(express.static("client"));
 
-/* ------------------------------------------------------------------
-   🌐 CORS
------------------------------------------------------------------- */
-app.use(
-  cors({
-    origin: [
-      "http://127.0.0.1:5500",
-      "http://localhost:5173",
-      "https://oduadvisingportal.netlify.app",
-    ],
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
-  })
-);
-
-/* ------------------------------------------------------------------
-   📝 Parse JSON
------------------------------------------------------------------- */
-app.use(bodyParser.json());
-
-/* ------------------------------------------------------------------
-   🧭 Request Logger
------------------------------------------------------------------- */
+// LOGGING
 app.use((req, res, next) => {
   console.log(`📌 ${req.method} ${req.url}`);
   next();
 });
 
-/* ------------------------------------------------------------------
-   📌 API Routes
------------------------------------------------------------------- */
+// ROUTES
 app.use("/user", user);
 app.use("/advising", advising);
 
-/* ------------------------------------------------------------------
-   🏠 Root Route
------------------------------------------------------------------- */
+// ROOT
 app.get("/", (req, res) => {
-  res.json({ status: 200, message: "🚀 Server running successfully!" });
+  res.json({ message: "Server is alive" });
 });
 
-/* ------------------------------------------------------------------
-   ❌ 404 Handler
------------------------------------------------------------------- */
+// 404
 app.use((req, res) => {
-  res.status(404).json({ status: 404, message: "Route not found 😢" });
+  res.status(404).json({ message: "Route not found" });
 });
 
-/* ------------------------------------------------------------------
-   🚀 Start Server
------------------------------------------------------------------- */
-app.listen(PORT, "0.0.0.0", () => {
+// DB CHECK
+(async () => {
+  try {
+    await pool.query("SELECT 1");
+    console.log("✅ MySQL Connected");
+  } catch (e) {
+    console.error("❌ DB FAILED", e.message);
+  }
+})();
+
+// START
+app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
 });
