@@ -7,85 +7,18 @@
   <link rel="stylesheet" href="style.css">
 
   <style>
-    body {
-      background:#f4f6fa;
-      font-family:Segoe UI, Arial, sans-serif;
-    }
-
-    .container {
-      max-width: 800px;
-      margin: 50px auto;
-      background: white;
-      padding: 40px;
-      border-radius: 14px;
-      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-    }
-
-    h2 { text-align:center; margin-bottom:20px; }
-
-    label {
-      font-weight: 600;
-      display: block;
-      margin-top: 15px;
-      margin-bottom: 5px;
-    }
-
-    select, input {
-      width: 100%;
-      padding: 11px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      font-size: 16px;
-    }
-
-    .course-row {
-      display:flex;
-      gap:10px;
-      margin-bottom:10px;
-    }
-
-    .course-row select {
-      flex:1;
-    }
-
-    button {
-      margin-top: 15px;
-      padding: 12px;
-      font-size: 16px;
-      background:#0050b3;
-      color:white;
-      border:none;
-      border-radius:8px;
-      cursor:pointer;
-    }
-
-    button:hover {
-      background:#003a80;
-    }
-
-    .remove-btn {
-      background:#b02a37;
-      padding:10px;
-    }
-
-    .remove-btn:hover {
-      background:#7a1c25;
-    }
-
-    .disabled-option {
-      color:#999;
-      background:#eee;
-    }
-
-    .actions {
-      margin-top:20px;
-    }
-
-    footer {
-      margin-top:30px;
-      text-align:center;
-      color:#777;
-    }
+    body { background:#f4f6fa; font-family:Segoe UI, Arial, sans-serif; }
+    .container { max-width:800px;margin:50px auto;background:white;padding:40px;border-radius:14px;box-shadow:0 8px 25px rgba(0,0,0,.1);}
+    h2{text-align:center;margin-bottom:20px;}
+    label{font-weight:600;margin-top:15px;display:block;}
+    select,input{width:100%;padding:11px;border-radius:8px;border:1px solid #ccc;font-size:16px;}
+    .course-row{display:flex;gap:10px;margin-bottom:10px;}
+    .course-row select{flex:1;}
+    button{margin-top:15px;padding:12px;font-size:16px;background:#0050b3;color:white;border:none;border-radius:8px;cursor:pointer;}
+    button:hover{background:#003a80;}
+    .remove-btn{background:#b02a37;}
+    .disabled-option{color:#999;background:#eee;}
+    footer{text-align:center;margin-top:25px;color:#777;}
   </style>
 </head>
 
@@ -126,10 +59,7 @@
     <div id="course-list"></div>
 
     <button type="button" id="addCourseBtn">+ Add Course</button>
-
-    <div class="actions">
-      <button type="submit">Save Advising Form</button>
-    </div>
+    <button type="submit">Save Advising Form</button>
 
   </form>
 
@@ -141,21 +71,19 @@ const BASE = "https://cs418518-f25-clean.onrender.com/advising";
 const email = localStorage.getItem("userEmail");
 const formId = new URLSearchParams(window.location.search).get("formId");
 
-if (!email) {
-  alert("Please sign in again.");
-  window.location.href = "signin.html";
-}
-
 document.getElementById("email").value = email;
 
-// GPA list
-const gpaSelect = document.getElementById("lastGPA");
-for (let g = 4; g >= 0; g -= 0.01) {
+// GPA
+const gpa = document.getElementById("lastGPA");
+for(let g=4; g>=0; g-=.01){
   const v = g.toFixed(2);
-  gpaSelect.innerHTML += `<option value="${v}">${v}</option>`;
+  gpa.innerHTML += `<option value="${v}">${v}</option>`;
 }
 
-// Course catalog (single source of truth)
+// Normalize helper (FIXES DASH BUG)
+function norm(v){ return v.replace(/–/g,"-").toLowerCase().trim(); }
+
+// Courses
 const COURSES = [
   "CS 150 – Intro to Programming",
   "CS 250 – Problem Solving",
@@ -174,72 +102,51 @@ const COURSES = [
   "CS 450 – Capstone Project"
 ];
 
-let takenCourses = [];
+let completed = [];
 let selected = [];
 
-// -----------------------------
-// Fetch completed courses
-// -----------------------------
-async function loadTakenCourses() {
+// Load completed
+async function loadTakenCourses(){
   const res = await fetch(`${BASE}/taken-courses?email=${encodeURIComponent(email)}`);
   const data = await res.json();
-  takenCourses = data.map(c => c.course_name);
+  completed = data.map(c => norm(c.course_name));
 }
 
-// -----------------------------
-// Render selected courses
-// -----------------------------
-function renderCourseList() {
-  const list = document.getElementById("course-list");
-  list.innerHTML = "";
+// Render rows
+function render(){
+  const wrap = document.getElementById("course-list");
+  wrap.innerHTML = "";
 
-  selected.forEach((course, index) => {
+  selected.forEach((value,i)=>{
     let options = `<option value="">Select course</option>`;
 
-    COURSES.forEach(c => {
-      const disabled = takenCourses.includes(c) ? "disabled class='disabled-option'" : "";
-      const isSelected = (c === course) ? "selected" : "";
-      const label = takenCourses.includes(c) ? `${c} (Completed)` : c;
-      options += `<option ${disabled} ${isSelected}>${label}</option>`;
+    COURSES.forEach(c=>{
+      const disabled = completed.includes(norm(c));
+      const sel = value === c ? "selected":"";
+      const dis = disabled ? "disabled class='disabled-option'" : "";
+      const label = disabled ? `${c} (Completed)` : c;
+      options += `<option ${dis} ${sel}>${label}</option>`;
     });
 
     const row = document.createElement("div");
     row.className = "course-row";
     row.innerHTML = `
-      <select onchange="updateCourse(${index}, this.value)">${options}</select>
-      <button type="button" class="remove-btn" onclick="removeCourse(${index})">X</button>
+      <select onchange="updateCourse(${i},this.value)">${options}</select>
+      <button type="button" class="remove-btn" onclick="removeCourse(${i})">X</button>
     `;
-    list.appendChild(row);
+    wrap.appendChild(row);
   });
 }
 
-// -----------------------------
-// Course editing helpers
-// -----------------------------
-function addCourse() {
-  selected.push("");
-  renderCourseList();
-}
+function addCourse(){ selected.push(""); render(); }
+function removeCourse(i){ selected.splice(i,1); render(); }
+function updateCourse(i,v){ selected[i]=v; }
 
-function removeCourse(idx) {
-  selected.splice(idx,1);
-  renderCourseList();
-}
-
-function updateCourse(idx, value) {
-  selected[idx] = value;
-}
-
-// -----------------------------
-// Load form data
-// -----------------------------
-async function loadForm() {
+// Load form
+async function loadForm(){
   await loadTakenCourses();
 
-  if (!formId) {
-    addCourse();
-    return;
-  }
+  if(!formId){ addCourse(); return; }
 
   const res = await fetch(`${BASE}/form?formId=${formId}`);
   const data = await res.json();
@@ -248,60 +155,39 @@ async function loadForm() {
   document.getElementById("lastGPA").value = Number(data.form.last_gpa).toFixed(2);
   document.getElementById("status").value = data.form.status;
 
-  // Lock status if no longer pending
-  if (data.form.status !== "Pending") {
+  // Lock status
+  if(data.form.status !== "Pending")
     document.getElementById("status").disabled = true;
-  }
 
-  selected = data.selectedCourses.map(c => c.name);
-  renderCourseList();
+  selected = data.selectedCourses.map(c=>c.name);
+  render();
 }
 
-// -----------------------------
-// Add Course Button
-// -----------------------------
-document.getElementById("addCourseBtn").onclick = addCourse;
-
-// -----------------------------
 // Submit
-// -----------------------------
-document.getElementById("advisingForm").onsubmit = async (e) => {
+document.getElementById("advisingForm").onsubmit = async e=>{
   e.preventDefault();
-
-  const clean = selected.filter(Boolean);
-
-  if (clean.length === 0) {
-    alert("Please select at least one course.");
-    return;
-  }
+  const clean = [...new Set(selected.filter(Boolean))];
+  if(!clean.length) return alert("Select at least one course.");
 
   const payload = {
-    formId,
-    email,
-    currentTerm: document.getElementById("currentTerm").value,
-    lastGPA: document.getElementById("lastGPA").value,
-    status: document.getElementById("status").value,
+    formId,email,
+    currentTerm: currentTerm.value,
+    lastGPA: lastGPA.value,
+    status: status.value,
     selectedCourses: clean
   };
 
-  const res = await fetch(`${BASE}/save`, {
-    method: "POST",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify(payload)
+  const res = await fetch(`${BASE}/save`,{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(payload)
   });
 
   const data = await res.json();
-
-  if (data.success) {
-    alert("Advising form saved!");
-    window.location.href = "classes.html";
-  } else {
-    alert(data.message || "Failed to save.");
-  }
+  data.success ? location="classes.html" : alert(data.message || "Save failed");
 };
 
+addCourseBtn.onclick = addCourse;
 loadForm();
 </script>
-
 </body>
 </html>
