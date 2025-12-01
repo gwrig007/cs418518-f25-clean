@@ -167,14 +167,16 @@ router.post("/save", async (req, res) => {
   res.json({ success: true, advisingId });
 });
 
-// ✅ Get ONE form + planned courses by form ID
+// ✅ Get ONE form + planned courses by form ID (safe + debug version)
 router.get("/forms/:id", async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Get the form
+    console.log("Fetching form ID:", id);
+
+    // Get the advising form
     const [forms] = await pool.query(
-      "SELECT id, email, current_term, last_gpa, status FROM advising_forms WHERE id = ?",
+      "SELECT * FROM advising_forms WHERE id = ?",
       [id]
     );
 
@@ -182,19 +184,27 @@ router.get("/forms/:id", async (req, res) => {
       return res.status(404).json({ error: "Form not found" });
     }
 
-    // Get planned courses for the form
-    const [courses] = await pool.query(
-      "SELECT course_level AS level, course_name FROM advising_courses WHERE form_id = ?",
-      [id]
-    );
+    console.log("Form data:", forms[0]);
 
-    // Send everything back
+    let courses = [];
+
+    try {
+      // Try common names for the courses table
+      const [rows] = await pool.query(
+        "SELECT * FROM advising_courses WHERE form_id = ?",
+        [id]
+      );
+      courses = rows;
+    } catch (err) {
+      console.warn("⚠️ advising_courses table not found or invalid structure.");
+    }
+
     res.json({
       ...forms[0],
       courses
     });
   } catch (err) {
-    console.error("Error loading form:", err);
+    console.error("❌ Load plan failure:", err);
     res.status(500).json({ error: "Server error loading course plan" });
   }
 });
