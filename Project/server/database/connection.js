@@ -1,4 +1,3 @@
-// database/connection.js
 import mysql from "mysql2/promise";
 
 export const pool = mysql.createPool({
@@ -6,18 +5,16 @@ export const pool = mysql.createPool({
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_DATABASE,
-  port: process.env.DB_PORT || 3306,
+  port: Number(process.env.DB_PORT) || 3306,
 
   waitForConnections: true,
-  connectionLimit: 5,     // 🔥 Match Clever Cloud's max_user_connections = 5
-  queueLimit: 0,
+  connectionLimit: 3,   // ✅ Reduce from 5 to 3
+  queueLimit: 10,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 10000,
 });
 
-// Logs for debugging (optional)
+// Optional logs (KEEP ONLY FOR DEBUG — remove later)
 pool.on("connection", () => {
-  console.log("🔥 New MySQL connection established");
-});
-
-pool.on("release", () => {
-  console.log("♻ MySQL connection released");
+  console.log("✅ DB connection opened");
 });
