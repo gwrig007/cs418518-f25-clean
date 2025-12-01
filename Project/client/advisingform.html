@@ -80,10 +80,12 @@ for(let g=4; g>=0; g-=.01){
   gpa.innerHTML += `<option value="${v}">${v}</option>`;
 }
 
-// Normalize helper (FIXES DASH BUG)
-function norm(v){ return v.replace(/–/g,"-").toLowerCase().trim(); }
+// Normalize helper
+function norm(v){ 
+  return v.replace(/–/g,"-").toLowerCase().trim(); 
+}
 
-// Courses
+// Courses list
 const COURSES = [
   "CS 150 – Intro to Programming",
   "CS 250 – Problem Solving",
@@ -103,16 +105,24 @@ const COURSES = [
 ];
 
 let completed = [];
+let currentCourses = [];
 let selected = [];
 
-// Load completed
+// ✅ Load completed
 async function loadTakenCourses(){
   const res = await fetch(`${BASE}/taken-courses?email=${encodeURIComponent(email)}`);
   const data = await res.json();
-  completed = data.map(c => norm(c.course_name));
+  completed = data.map(c => norm(c.course_name || c));
 }
 
-// Render rows
+// ✅ Load CURRENT
+async function loadCurrentCourses(){
+  const res = await fetch(`${BASE}/current-courses?email=${encodeURIComponent(email)}`);
+  const data = await res.json();
+  currentCourses = data.map(c => norm(c));
+}
+
+// ✅ Render rows
 function render(){
   const wrap = document.getElementById("course-list");
   wrap.innerHTML = "";
@@ -121,10 +131,22 @@ function render(){
     let options = `<option value="">Select course</option>`;
 
     COURSES.forEach(c=>{
-      const disabled = completed.includes(norm(c));
+      const isCompleted = completed.includes(norm(c));
+      const isCurrent = currentCourses.includes(norm(c));
       const sel = value === c ? "selected":"";
-      const dis = disabled ? "disabled class='disabled-option'" : "";
-      const label = disabled ? `${c} (Completed)` : c;
+
+      let label = c;
+      let dis = "";
+
+      if (isCompleted) {
+        dis = "disabled class='disabled-option'";
+        label = `${c} (Completed)`;
+      }
+      if (isCurrent) {
+        dis = "disabled class='disabled-option'";
+        label = `${c} (Currently Enrolled)`;
+      }
+
       options += `<option ${dis} ${sel}>${label}</option>`;
     });
 
@@ -138,15 +160,29 @@ function render(){
   });
 }
 
-function addCourse(){ selected.push(""); render(); }
-function removeCourse(i){ selected.splice(i,1); render(); }
-function updateCourse(i,v){ selected[i]=v; }
+function addCourse(){
+  selected.push("");
+  render();
+}
 
-// Load form
+function removeCourse(i){
+  selected.splice(i,1);
+  render();
+}
+
+function updateCourse(i,v){
+  selected[i]=v;
+}
+
+// ✅ Load form
 async function loadForm(){
   await loadTakenCourses();
+  await loadCurrentCourses();
 
-  if(!formId){ addCourse(); return; }
+  if(!formId){ 
+    addCourse(); 
+    return; 
+  }
 
   const res = await fetch(`${BASE}/form?formId=${formId}`);
   const data = await res.json();
@@ -155,7 +191,6 @@ async function loadForm(){
   document.getElementById("lastGPA").value = Number(data.form.last_gpa).toFixed(2);
   document.getElementById("status").value = data.form.status;
 
-  // Lock status
   if(data.form.status !== "Pending")
     document.getElementById("status").disabled = true;
 
@@ -163,14 +198,22 @@ async function loadForm(){
   render();
 }
 
-// Submit
+// ✅ Submit validation (HARD RULE)
 document.getElementById("advisingForm").onsubmit = async e=>{
   e.preventDefault();
+
   const clean = [...new Set(selected.filter(Boolean))];
   if(!clean.length) return alert("Select at least one course.");
 
+  const duplicate = clean.find(c => currentCourses.includes(norm(c)));
+  if (duplicate) {
+    alert(`You are already enrolled in:\n${duplicate}`);
+    return;
+  }
+
   const payload = {
-    formId,email,
+    formId: formId || null,
+    email,
     currentTerm: currentTerm.value,
     lastGPA: lastGPA.value,
     status: status.value,
@@ -178,7 +221,8 @@ document.getElementById("advisingForm").onsubmit = async e=>{
   };
 
   const res = await fetch(`${BASE}/save`,{
-    method:"POST",headers:{"Content-Type":"application/json"},
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
     body:JSON.stringify(payload)
   });
 
@@ -186,8 +230,10 @@ document.getElementById("advisingForm").onsubmit = async e=>{
   data.success ? location="classes.html" : alert(data.message || "Save failed");
 };
 
+// Init
 addCourseBtn.onclick = addCourse;
 loadForm();
 </script>
+
 </body>
 </html>
