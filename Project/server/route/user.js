@@ -3,7 +3,7 @@ import { pool } from "../database/connection.js";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import fetch from "node-fetch";
-import { sendEmail } from "../utils/email.js"; // ✅ uses your SendGrid helper
+import { sendEmail } from "../utils/sendmail.js"; // ✅ uses your SendGrid helper
 
 const router = express.Router();
 
