@@ -2,25 +2,13 @@ import express from "express";
 import { pool } from "../database/connection.js";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import nodemailer from "nodemailer";
 import fetch from "node-fetch";
-
+import { sendEmail } from "../utils/email.js"; // ✅ uses your SendGrid helper
 
 const router = express.Router();
 
 /* ============================================================
-   📌 EMAIL TRANSPORTER (SAFE MODE)
-============================================================ */
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
-
-/* ============================================================
-   📌 REGISTER USER
+   ✅ REGISTER
 ============================================================ */
 router.post("/register", async (req, res) => {
   try {
@@ -37,52 +25,69 @@ router.post("/register", async (req, res) => {
     res.json({ message: "Registration successful!" });
   } catch (err) {
     console.error("REGISTER ERROR:", err);
-    res.status(500).json({ message: "Error registering user." });
+    res.status(500).json({ message: "Registration failed." });
   }
 });
 
 /* ============================================================
-   📌 LOGIN
+   ✅ LOGIN + reCAPTCHA + SEND OTP VIA SENDGRID
 ============================================================ */
 router.post("/login", async (req, res) => {
   try {
     const { email, password, recaptcha } = req.body;
 
-    // ✅ Make sure captcha exists
-    if (!recaptcha) {
-      return res.status(400).json({ message: "Captcha is required." });
-    }
+    if (!recaptcha)
+      return res.status(400).json({ message: "Captcha required." });
 
-    // ✅ Verify reCAPTCHA with Google (TEST SECRET KEY — works on any domain)
-    const response = await fetch("https://www.google.com/recaptcha/api/siteverify", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: `secret=6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe&response=${recaptcha}`
-    });
+    // ✅ Verify reCAPTCHA (TEST SECRET — works anywhere)
+    const captchaRes = await fetch(
+      "https://www.google.com/recaptcha/api/siteverify",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `secret=6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe&response=${recaptcha}`
+      }
+    );
 
-    const captchaResult = await response.json();
+    const captcha = await captchaRes.json();
+    if (!captcha.success)
+      return res.status(401).json({ message: "Captcha failed." });
 
-    if (!captchaResult.success) {
-      return res.status(401).json({ message: "reCAPTCHA validation failed." });
-    }
-
-    // ✅ Normal login logic (unchanged)
+    // ✅ Verify user
     const [[user]] = await pool.query(
-      "SELECT * FROM user_information WHERE u_email = ?",
+      "SELECT u_password FROM user_information WHERE u_email = ?",
       [email]
     );
 
-    if (!user) {
-      return res.status(404).json({ message: "Invalid credentials." });
-    }
+    if (!user)
+      return res.status(401).json({ message: "Invalid credentials." });
 
     const match = await bcrypt.compare(password, user.u_password);
-    if (!match) {
+    if (!match)
       return res.status(401).json({ message: "Invalid credentials." });
-    }
 
-    // ✅ Login success
-    res.json({ message: "Login successful!", userId: user.u_id });
+    // ✅ Generate OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    await pool.query(
+      "UPDATE user_information SET otp_code = ?, otp_expires_at = ? WHERE u_email = ?",
+      [otp, expires, email]
+    );
+
+    // ✅ Send OTP via SendGrid
+    await sendEmail(
+      email,
+      "Your Login Verification Code",
+      `
+      <h2>ODU Course Advising Portal</h2>
+      <p>Your one-time login code is:</p>
+      <h1>${otp}</h1>
+      <p>This code expires in 10 minutes.</p>
+      `
+    );
+
+    res.json({ message: "OTP sent to email.", requireOTP: true });
 
   } catch (err) {
     console.error("LOGIN ERROR:", err);
@@ -91,12 +96,51 @@ router.post("/login", async (req, res) => {
 });
 
 /* ============================================================
-   📌 FORGOT PASSWORD (SAFE IMPLEMENTATION)
+   ✅ VERIFY OTP
+============================================================ */
+router.post("/verify-otp", async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp)
+      return res.status(400).json({ message: "Missing email or code." });
+
+    const [[user]] = await pool.query(
+      "SELECT otp_code, otp_expires_at FROM user_information WHERE u_email = ?",
+      [email]
+    );
+
+    if (!user || !user.otp_code)
+      return res.status(400).json({ message: "No OTP found. Login again." });
+
+    if (user.otp_code !== otp)
+      return res.status(401).json({ message: "Invalid OTP." });
+
+    if (new Date(user.otp_expires_at) < new Date())
+      return res.status(401).json({ message: "OTP expired." });
+
+    // ✅ Clear OTP
+    await pool.query(
+      "UPDATE user_information SET otp_code = NULL, otp_expires_at = NULL WHERE u_email = ?",
+      [email]
+    );
+
+    res.json({ message: "OTP verified successfully!" });
+
+  } catch (err) {
+    console.error("OTP ERROR:", err);
+    res.status(500).json({ message: "OTP verification failed." });
+  }
+});
+
+/* ============================================================
+   ✅ FORGOT PASSWORD
 ============================================================ */
 router.post("/forgot", async (req, res) => {
   const { email } = req.body;
 
-  if (!email) return res.status(400).json({ message: "Email is required." });
+  if (!email)
+    return res.status(400).json({ message: "Email required." });
 
   try {
     const [[user]] = await pool.query(
@@ -104,9 +148,9 @@ router.post("/forgot", async (req, res) => {
       [email]
     );
 
-    // ✅ Always respond safely (no enumeration)
+    // ✅ Prevent enumeration
     if (!user)
-      return res.json({ message: "If the email exists, a reset link has been sent." });
+      return res.json({ message: "If the email exists, a reset link was sent." });
 
     const token = crypto.randomBytes(32).toString("hex");
 
@@ -118,23 +162,16 @@ router.post("/forgot", async (req, res) => {
     const resetLink =
       `https://oduadvisingportal.netlify.app/reset.html?token=${token}`;
 
-    // ✅ Try to send email (but never block app if email fails)
-    try {
-      await transporter.sendMail({
-        from: process.env.EMAIL_USER,
-        to: email,
-        subject: "Password Reset Request",
-        html: `
-          <p>You requested a password reset.</p>
-          <p>Click the link below:</p>
-          <a href="${resetLink}">${resetLink}</a>
-        `,
-      });
-    } catch (emailErr) {
-      console.error("EMAIL ERROR:", emailErr.message);
-    }
+    await sendEmail(
+      email,
+      "Reset Your Password",
+      `
+      <p>Click the link below to reset your password:</p>
+      <a href="${resetLink}">${resetLink}</a>
+      `
+    );
 
-    res.json({ message: "If the email exists, a reset link has been sent." });
+    res.json({ message: "If the email exists, a reset link was sent." });
 
   } catch (err) {
     console.error("FORGOT ERROR:", err);
@@ -143,7 +180,7 @@ router.post("/forgot", async (req, res) => {
 });
 
 /* ============================================================
-   📌 RESET PASSWORD (TOKEN)
+   ✅ RESET PASSWORD
 ============================================================ */
 router.post("/reset-password", async (req, res) => {
   const { token, newPassword } = req.body;
@@ -152,37 +189,34 @@ router.post("/reset-password", async (req, res) => {
     return res.status(400).json({ message: "Missing token or password." });
 
   try {
-    const [rows] = await pool.query(
+    const [[user]] = await pool.query(
       "SELECT u_id FROM user_information WHERE verification_token = ?",
       [token]
     );
 
-    if (rows.length === 0)
-      return res.status(400).json({ message: "Invalid or expired reset link." });
+    if (!user)
+      return res.status(400).json({ message: "Invalid or expired link." });
 
     const hashed = await bcrypt.hash(newPassword, 10);
 
     await pool.query(
       "UPDATE user_information SET u_password = ?, verification_token = NULL WHERE u_id = ?",
-      [hashed, rows[0].u_id]
+      [hashed, user.u_id]
     );
 
-    res.json({ message: "Password successfully reset." });
+    res.json({ message: "Password updated successfully." });
 
   } catch (err) {
     console.error("RESET ERROR:", err);
-    res.status(500).json({ message: "Server error." });
+    res.status(500).json({ message: "Reset failed." });
   }
 });
 
 /* ============================================================
-   📌 CHANGE PASSWORD (LOGGED-IN USERS)
+   ✅ CHANGE PASSWORD
 ============================================================ */
 router.put("/change-password", async (req, res) => {
   const { email, currentPassword, newPassword } = req.body;
-
-  if (!email || !currentPassword || !newPassword)
-    return res.status(400).json({ message: "Missing required fields." });
 
   try {
     const [[user]] = await pool.query(
@@ -190,10 +224,11 @@ router.put("/change-password", async (req, res) => {
       [email]
     );
 
-    if (!user) return res.status(404).json({ message: "User not found." });
+    if (!user)
+      return res.status(404).json({ message: "User not found." });
 
-    const valid = await bcrypt.compare(currentPassword, user.u_password);
-    if (!valid)
+    const match = await bcrypt.compare(currentPassword, user.u_password);
+    if (!match)
       return res.status(401).json({ message: "Incorrect current password." });
 
     const hashed = await bcrypt.hash(newPassword, 10);
@@ -203,11 +238,11 @@ router.put("/change-password", async (req, res) => {
       [hashed, email]
     );
 
-    res.json({ message: "Password updated successfully!" });
+    res.json({ message: "Password updated." });
 
   } catch (err) {
     console.error("CHANGE PASSWORD ERROR:", err);
-    res.status(500).json({ message: "Server error updating password." });
+    res.status(500).json({ message: "Password update failed." });
   }
 });
 
