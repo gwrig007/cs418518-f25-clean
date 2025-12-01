@@ -167,4 +167,36 @@ router.post("/save", async (req, res) => {
   res.json({ success: true, advisingId });
 });
 
+// ✅ Get ONE form + planned courses by form ID
+router.get("/forms/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Get the form
+    const [forms] = await pool.query(
+      "SELECT id, email, current_term, last_gpa, status FROM advising_forms WHERE id = ?",
+      [id]
+    );
+
+    if (forms.length === 0) {
+      return res.status(404).json({ error: "Form not found" });
+    }
+
+    // Get planned courses for the form
+    const [courses] = await pool.query(
+      "SELECT course_level AS level, course_name FROM advising_courses WHERE form_id = ?",
+      [id]
+    );
+
+    // Send everything back
+    res.json({
+      ...forms[0],
+      courses
+    });
+  } catch (err) {
+    console.error("Error loading form:", err);
+    res.status(500).json({ error: "Server error loading course plan" });
+  }
+});
+
 export default router;
