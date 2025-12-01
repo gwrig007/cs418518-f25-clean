@@ -7,58 +7,89 @@
   <link rel="stylesheet" href="style.css">
 
   <style>
-    .container {
-      max-width: 750px;
-      margin: 40px auto;
-      background: white;
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    body {
+      background:#f4f6fa;
+      font-family:Segoe UI, Arial, sans-serif;
     }
 
-    label { font-weight: 600; display: block; margin-top: 12px; }
+    .container {
+      max-width: 800px;
+      margin: 50px auto;
+      background: white;
+      padding: 40px;
+      border-radius: 14px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    }
+
+    h2 { text-align:center; margin-bottom:20px; }
+
+    label {
+      font-weight: 600;
+      display: block;
+      margin-top: 15px;
+      margin-bottom: 5px;
+    }
+
     select, input {
       width: 100%;
-      padding: 10px;
-      margin-top: 6px;
-      border-radius: 6px;
+      padding: 11px;
+      border-radius: 8px;
       border: 1px solid #ccc;
       font-size: 16px;
     }
 
-    button {
-      width: 100%;
-      margin-top: 20px;
-      padding: 12px;
-      font-size: 18px;
-      background: #0050b3;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
+    .course-row {
+      display:flex;
+      gap:10px;
+      margin-bottom:10px;
     }
 
-    button:hover { background: #003d8a; }
+    .course-row select {
+      flex:1;
+    }
 
-    .course-row {
-      margin-bottom: 10px;
+    button {
+      margin-top: 15px;
+      padding: 12px;
+      font-size: 16px;
+      background:#0050b3;
+      color:white;
+      border:none;
+      border-radius:8px;
+      cursor:pointer;
+    }
+
+    button:hover {
+      background:#003a80;
+    }
+
+    .remove-btn {
+      background:#b02a37;
+      padding:10px;
+    }
+
+    .remove-btn:hover {
+      background:#7a1c25;
     }
 
     .disabled-option {
-      color: #999;
-      background: #f1f1f1;
+      color:#999;
+      background:#eee;
+    }
+
+    .actions {
+      margin-top:20px;
+    }
+
+    footer {
+      margin-top:30px;
+      text-align:center;
+      color:#777;
     }
   </style>
 </head>
 
 <body>
-
-<header>
-  <div style="display:flex;align-items:center;gap:15px;">
-    <img src="https://upload.wikimedia.org/wikipedia/en/2/2d/Old_Dominion_Monarchs_logo.svg" style="height:60px;">
-    <h2>ODU Course Advising Portal</h2>
-  </div>
-</header>
 
 <div class="container">
   <h2>Course Advising Form</h2>
@@ -71,7 +102,7 @@
 
     <label>Current Term</label>
     <select id="currentTerm" required>
-      <option value="">Choose term</option>
+      <option value="">Select Term</option>
       <option>Fall 2023</option><option>Spring 2023</option>
       <option>Fall 2024</option><option>Spring 2024</option>
       <option>Fall 2025</option><option>Spring 2025</option>
@@ -82,14 +113,27 @@
     <label>Last GPA</label>
     <select id="lastGPA" required></select>
 
-    <h3>Choose Courses</h3>
+    <label>Status</label>
+    <select id="status">
+      <option value="Pending">Pending</option>
+      <option value="Approved">Approved</option>
+      <option value="Rejected">Rejected</option>
+    </select>
+
+    <h3>Selected Courses</h3>
     <p>Completed courses are disabled.</p>
 
-    <div id="courses-wrapper"></div>
+    <div id="course-list"></div>
 
-    <button type="submit">Submit Advising Form</button>
-    <button type="button" onclick="window.location.href='classes.html'" style="margin-top:8px;">Back</button>
+    <button type="button" id="addCourseBtn">+ Add Course</button>
+
+    <div class="actions">
+      <button type="submit">Save Advising Form</button>
+    </div>
+
   </form>
+
+  <footer>© 2025 Old Dominion University</footer>
 </div>
 
 <script>
@@ -98,19 +142,20 @@ const email = localStorage.getItem("userEmail");
 const formId = new URLSearchParams(window.location.search).get("formId");
 
 if (!email) {
-  alert("Please sign in.");
+  alert("Please sign in again.");
   window.location.href = "signin.html";
 }
+
 document.getElementById("email").value = email;
 
-// GPA values
-const gpa = document.getElementById("lastGPA");
-for (let i = 4.0; i >= 0; i -= 0.01) {
-  const v = i.toFixed(2);
-  gpa.innerHTML += `<option value="${v}">${v}</option>`;
+// GPA list
+const gpaSelect = document.getElementById("lastGPA");
+for (let g = 4; g >= 0; g -= 0.01) {
+  const v = g.toFixed(2);
+  gpaSelect.innerHTML += `<option value="${v}">${v}</option>`;
 }
 
-// Course catalog
+// Course catalog (single source of truth)
 const COURSES = [
   "CS 150 – Intro to Programming",
   "CS 250 – Problem Solving",
@@ -130,46 +175,69 @@ const COURSES = [
 ];
 
 let takenCourses = [];
+let selected = [];
 
-// Load completed courses
+// -----------------------------
+// Fetch completed courses
+// -----------------------------
 async function loadTakenCourses() {
   const res = await fetch(`${BASE}/taken-courses?email=${encodeURIComponent(email)}`);
   const data = await res.json();
   takenCourses = data.map(c => c.course_name);
 }
 
-// Render 15 dropdowns
-async function renderDropdowns(selected = []) {
-  await loadTakenCourses();
-  const wrap = document.getElementById("courses-wrapper");
-  wrap.innerHTML = "";
+// -----------------------------
+// Render selected courses
+// -----------------------------
+function renderCourseList() {
+  const list = document.getElementById("course-list");
+  list.innerHTML = "";
 
-  for (let i = 0; i < 15; i++) {
-    const chosen = selected[i] || "";
-
+  selected.forEach((course, index) => {
     let options = `<option value="">Select course</option>`;
 
-    COURSES.forEach(course => {
-      const taken = takenCourses.includes(course);
-      const disabled = taken ? "disabled class='disabled-option'" : "";
-      const selectedAttr = chosen === course ? "selected" : "";
-      const label = taken ? `${course} (Completed)` : course;
-
-      options += `<option value="${course}" ${disabled} ${selectedAttr}>${label}</option>`;
+    COURSES.forEach(c => {
+      const disabled = takenCourses.includes(c) ? "disabled class='disabled-option'" : "";
+      const isSelected = (c === course) ? "selected" : "";
+      const label = takenCourses.includes(c) ? `${c} (Completed)` : c;
+      options += `<option ${disabled} ${isSelected}>${label}</option>`;
     });
 
-    wrap.innerHTML += `
-      <div class="course-row">
-        <select class="courseSelect">${options}</select>
-      </div>
+    const row = document.createElement("div");
+    row.className = "course-row";
+    row.innerHTML = `
+      <select onchange="updateCourse(${index}, this.value)">${options}</select>
+      <button type="button" class="remove-btn" onclick="removeCourse(${index})">X</button>
     `;
-  }
+    list.appendChild(row);
+  });
 }
 
-// Load form if editing
+// -----------------------------
+// Course editing helpers
+// -----------------------------
+function addCourse() {
+  selected.push("");
+  renderCourseList();
+}
+
+function removeCourse(idx) {
+  selected.splice(idx,1);
+  renderCourseList();
+}
+
+function updateCourse(idx, value) {
+  selected[idx] = value;
+}
+
+// -----------------------------
+// Load form data
+// -----------------------------
 async function loadForm() {
+  await loadTakenCourses();
+
   if (!formId) {
-    renderDropdowns();
+    addCourse();
     return;
   }
 
@@ -178,44 +246,60 @@ async function loadForm() {
 
   document.getElementById("currentTerm").value = data.form.current_term;
   document.getElementById("lastGPA").value = Number(data.form.last_gpa).toFixed(2);
+  document.getElementById("status").value = data.form.status;
 
-  const selected = data.selectedCourses.map(c => c.name);
-  renderDropdowns(selected);
+  // Lock status if no longer pending
+  if (data.form.status !== "Pending") {
+    document.getElementById("status").disabled = true;
+  }
+
+  selected = data.selectedCourses.map(c => c.name);
+  renderCourseList();
 }
 
+// -----------------------------
+// Add Course Button
+// -----------------------------
+document.getElementById("addCourseBtn").onclick = addCourse;
+
+// -----------------------------
 // Submit
-document.getElementById("advisingForm").addEventListener("submit", async e => {
+// -----------------------------
+document.getElementById("advisingForm").onsubmit = async (e) => {
   e.preventDefault();
 
-  const selections = [...document.querySelectorAll(".courseSelect")]
-    .map(s => s.value)
-    .filter(Boolean);
+  const clean = selected.filter(Boolean);
+
+  if (clean.length === 0) {
+    alert("Please select at least one course.");
+    return;
+  }
 
   const payload = {
     formId,
     email,
     currentTerm: document.getElementById("currentTerm").value,
     lastGPA: document.getElementById("lastGPA").value,
-    selectedCourses: selections
+    status: document.getElementById("status").value,
+    selectedCourses: clean
   };
 
   const res = await fetch(`${BASE}/save`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {"Content-Type":"application/json"},
     body: JSON.stringify(payload)
   });
 
   const data = await res.json();
 
   if (data.success) {
-    alert("Form saved successfully!");
+    alert("Advising form saved!");
     window.location.href = "classes.html";
   } else {
-    alert("Error saving form.");
+    alert(data.message || "Failed to save.");
   }
-});
+};
 
-// Init
 loadForm();
 </script>
 

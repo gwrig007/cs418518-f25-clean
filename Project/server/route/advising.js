@@ -32,7 +32,6 @@ router.get("/current-courses", async (req, res) => {
     );
 
     res.json(rows);
-
   } catch (err) {
     console.error("CURRENT COURSES ERROR:", err);
     res.status(500).json({ message: "Error loading current courses" });
@@ -40,7 +39,7 @@ router.get("/current-courses", async (req, res) => {
 });
 
 /* ============================================================
-   ✅ TAKEN COURSES (Feeds Frontend Dropdown Disabling)
+   ✅ TAKEN COURSES (Completed only)
 ============================================================ */
 router.get("/taken-courses", async (req, res) => {
   try {
@@ -48,7 +47,6 @@ router.get("/taken-courses", async (req, res) => {
     const userId = await getUserIdByEmail(email);
     if (!userId) return res.json([]);
 
-    // ✅ Only COMPLETED courses should be disabled
     const [rows] = await pool.query(
       `SELECT course_name, term 
        FROM advising_courses 
@@ -57,7 +55,6 @@ router.get("/taken-courses", async (req, res) => {
     );
 
     res.json(rows);
-
   } catch (err) {
     console.error("TAKEN COURSES ERROR:", err);
     res.status(500).json({ message: "Error loading taken courses" });
@@ -82,7 +79,6 @@ router.get("/forms", async (req, res) => {
     );
 
     res.json(rows);
-
   } catch (err) {
     console.error("FORMS ERROR:", err);
     res.status(500).json([]);
@@ -103,6 +99,9 @@ router.get("/form", async (req, res) => {
 
     if (!form) return res.status(404).json({ message: "Form not found" });
 
+    // ✅ GPA SAFETY FIX
+    form.last_gpa = form.last_gpa === null ? null : Number(form.last_gpa);
+
     const [courses] = await pool.query(
       `SELECT course_name, status, term
        FROM advising_courses
@@ -118,7 +117,6 @@ router.get("/form", async (req, res) => {
         term: c.term
       }))
     });
-
   } catch (err) {
     console.error("LOAD FORM ERROR:", err);
     res.status(500).json({ message: "Error loading form" });
@@ -130,7 +128,7 @@ router.get("/form", async (req, res) => {
 ============================================================ */
 router.post("/save", async (req, res) => {
   try {
-    const { formId, email, currentTerm, lastGPA, selectedCourses } = req.body;
+    const { formId, email, currentTerm, lastGPA, status, selectedCourses } = req.body;
 
     if (!email || !currentTerm || !selectedCourses) {
       return res.status(400).json({ message: "Missing required fields." });
@@ -146,8 +144,8 @@ router.post("/save", async (req, res) => {
       const [result] = await pool.query(
         `INSERT INTO advising
           (user_id, current_term, last_gpa, last_term, status, created_at)
-         VALUES (?, ?, ?, ?, 'Pending', NOW())`,
-        [userId, currentTerm, lastGPA || null, currentTerm]
+         VALUES (?, ?, ?, ?, ?, NOW())`,
+        [userId, currentTerm, lastGPA || null, currentTerm, status || "Pending"]
       );
 
       advisingId = result.insertId;
@@ -160,13 +158,14 @@ router.post("/save", async (req, res) => {
         [formId]
       );
 
+      // ✅ LOCK AFTER APPROVED/REJECTED
       if (!check || check.status !== "Pending") {
         return res.status(403).json({ message: "Form is locked." });
       }
 
       await pool.query(
-        "UPDATE advising SET current_term = ?, last_gpa = ? WHERE id = ?",
-        [currentTerm, lastGPA || null, formId]
+        "UPDATE advising SET current_term = ?, last_gpa = ?, status = ? WHERE id = ?",
+        [currentTerm, lastGPA || null, status || "Pending", formId]
       );
     }
 
