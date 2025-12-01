@@ -252,4 +252,28 @@ router.put("/change-password", async (req, res) => {
   }
 });
 
+// ============================================================
+// ✅ get profile
+router.get("/profile", async (req, res) => {
+  const { email } = req.query;
+
+  if (!email) return res.status(400).json({ message: "Missing email" });
+
+  try {
+    const [[user]] = await pool.query(
+      "SELECT u_first_name, u_last_name, u_email FROM user_information WHERE u_email = ?",
+      [email]
+    );
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.json(user);
+
+  } catch (err) {
+    console.error("PROFILE ERROR:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
 export default router;

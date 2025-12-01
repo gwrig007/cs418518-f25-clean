@@ -100,60 +100,43 @@
     <div id="msg" class="msg"></div>
   </div>
 
-  <script>
-    const API_BASE =
-      window.location.hostname.includes("localhost") || window.location.hostname.includes("127.0.0.1")
-        ? "http://127.0.0.1:8080"
-        : "https://cs418518-f25-clean.onrender.com";
+ <script>
+const API_BASE =
+  window.location.hostname.includes("localhost")
+    ? "http://127.0.0.1:10000"
+    : "https://cs418518-f25-clean.onrender.com";
 
-    const btn = document.getElementById("signinBtn");
-    const msg = document.getElementById("msg");
+document.getElementById("signinBtn").addEventListener("click", async () => {
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value.trim();
+  const captcha = grecaptcha.getResponse();
+  const msg = document.getElementById("msg");
 
-    btn.addEventListener("click", async () => {
-      msg.textContent = "";
-      const email = document.getElementById("email").value.trim();
-      const password = document.getElementById("password").value.trim();
-      const captcha = grecaptcha.getResponse();
+  if (!email || !password) return msg.textContent = "Fill all fields";
+  if (!captcha) return msg.textContent = "Verify captcha";
 
-      if (!email || !password) {
-        msg.textContent = "Please enter both email and password.";
-        return;
-      }
-
-      // ✅ CAPTCHA CHECK
-      if (!captcha) {
-        msg.textContent = "Please verify you are not a robot.";
-        return;
-      }
-
-      try {
-        const res = await fetch(`${API_BASE}/user/login`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password, recaptcha: captcha })
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-          msg.textContent = data.message || "Login failed.";
-          return;
-        }
-
-        localStorage.setItem("pendingEmail", email);
-        msg.style.color = "#0f5132";
-        msg.textContent = "Login successful!";
-
-        setTimeout(() => {
-          window.location.href = "verify-otp.html";
-        }, 800);
-
-      } catch (err) {
-        console.error(err);
-        msg.textContent = "Server error. Please try again later.";
-      }
+  try {
+    const res = await fetch(`${API_BASE}/user/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, recaptcha: captcha })
     });
-  </script>
+
+    const data = await res.json();
+
+    if (!res.ok) return msg.textContent = data.message;
+
+    // ✅ OTP PHASE
+    localStorage.setItem("pendingEmail", email);
+    window.location.href = "verify-otp.html";
+
+  } catch (err) {
+    console.error(err);
+    msg.textContent = "Server unavailable.";
+  }
+});
+</script>
+
 
 </body>
 </html>

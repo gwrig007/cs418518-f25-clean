@@ -21,30 +21,32 @@
   </div>
 
   <script>
-  const API =
+document.addEventListener("DOMContentLoaded", () => {
+  const BASE_URL =
     window.location.hostname.includes("localhost")
       ? "http://127.0.0.1:10000"
       : "https://cs418518-f25-clean.onrender.com";
 
-  const email = localStorage.getItem("pendingEmail");
+  const pendingEmail = localStorage.getItem("pendingEmail");
   const msg = document.getElementById("msg");
+
+  if (!pendingEmail) {
+    alert("Session expired. Please sign in again.");
+    window.location.href = "signin.html";
+    return;
+  }
 
   document.getElementById("otpForm").addEventListener("submit", async (e) => {
     e.preventDefault();
-    msg.textContent = "";
 
     const otp = document.getElementById("otp").value.trim();
-
-    if (!otp) {
-      msg.textContent = "Enter your code.";
-      return;
-    }
+    if (!otp) return (msg.textContent = "Enter the OTP code.");
 
     try {
-      const res = await fetch(`${API}/user/verify-otp`, {
+      const res = await fetch(`${BASE_URL}/user/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, otp })
+        body: JSON.stringify({ email: pendingEmail, otp })
       });
 
       const data = await res.json();
@@ -54,22 +56,25 @@
         return;
       }
 
-      // ✅ Lock login state
-      localStorage.setItem("loggedIn", "true");
+      // ✅ LOGIN FINALIZED HERE
+      localStorage.setItem("userEmail", pendingEmail);
+      localStorage.removeItem("pendingEmail");
 
       msg.style.color = "green";
-      msg.textContent = "Verified! Redirecting...";
+      msg.textContent = "Success! Redirecting...";
 
       setTimeout(() => {
         window.location.href = "home.html";
-      }, 800);
+      }, 700);
 
     } catch (err) {
       console.error(err);
       msg.textContent = "Server error";
     }
   });
+});
 </script>
+
 
 </body>
 </html>
