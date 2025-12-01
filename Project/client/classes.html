@@ -1,151 +1,202 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <link rel="icon" type="image/png" href="favicon.png">
-
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Your Advising Dashboard | ODU</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Course Plans | Advising</title>
+  <link rel="stylesheet" href="style.css" />
   <style>
-    .container {
-      max-width: 900px;
-      margin: 40px auto;
-      background: white;
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
     }
-    h1, h2 { margin-top:25px; }
-    .course-box, .form-row {
-      background:#f9f9f9; 
-      padding:12px 15px; 
-      margin:8px 0; 
-      border-radius:6px; 
-      border:1px solid #ddd;
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
     }
-    .form-status { font-weight:bold; }
-    .btn { 
-      display:inline-block; 
-      margin-top:20px; 
-      padding:12px 20px; 
-      background:#0050b3; 
-      color:white; 
-      border-radius:6px; 
-      text-decoration:none; 
-      transition:0.2s;
+    th {
+      background: #f5f5f5;
+      font-weight: 600;
     }
-    .btn:hover { background:#003d8a; }
-    .view-btn { 
-      padding:8px 12px; 
-      background:#0066cc; 
-      color:white; 
-      border-radius:6px; 
-      text-decoration:none;
+    .btn {
+      padding: 6px 10px;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
     }
-    .view-btn:hover { background:#004c99; }
+    .btn-view {
+      background:#0066cc;
+      color:#fff;
+    }
+    .note {
+      margin-top: 10px;
+      font-size: 0.9rem;
+      color: #555;
+    }
   </style>
 </head>
 <body>
-
-<header>
-  <div style="display:flex;align-items:center;gap:15px;">
-    <img src="https://upload.wikimedia.org/wikipedia/en/2/2d/Old_Dominion_Monarchs_logo.svg" alt="ODU Logo" style="height:60px;">
-    <h1>ODU Course Advising Portal</h1>
-  </div>
-</header>
-
 <div class="container">
-  <h1>Your Advising Dashboard</h1>
-  <button id="newFormBtn" class="btn">➕ New Advising Form</button>
+  <h1>My Course Plans</h1>
 
-  <h2>Current Courses</h2>
-  <div id="currentCourses">Loading...</div>
+  <label for="email">Email</label>
+  <input type="email" id="email" readonly />
 
-  <h2>Courses Taken Last Term</h2>
-  <div id="takenCourses">Loading...</div>
+  <!-- ⭐ ONLY COURSE PLANS SECTION ⭐ -->
+  <section style="margin-top:20px;">
+    <h2>Submitted Advising Forms / Course Plans</h2>
+    <p class="note">Click "View Plan" to see the planned courses for that advising form.</p>
 
-  <h2>Your Advising Forms</h2>
-  <div id="formsList">Loading...</div>
+    <table id="formsTable">
+      <thead>
+        <tr>
+          <th>Current Term</th>
+          <th>Last GPA</th>
+          <th>Status</th>
+          <th>Submitted At</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- rows added by JS -->
+      </tbody>
+    </table>
+    <p id="noFormsMsg" class="note" style="display:none;">
+      You don’t have any advising forms / course plans yet.
+    </p>
+  </section>
 
-  <button class="btn" onclick="window.location.href='home.html'" style="margin-top:20px;">Back to Home</button>
+  <!-- DETAILS FOR A SELECTED COURSE PLAN -->
+  <section id="planSection" style="margin-top:30px; display:none;">
+    <h2>Planned Courses for <span id="planTerm"></span></h2>
+    <ul id="planList"></ul>
+  </section>
 </div>
 
-<footer>
-  © 2025 Old Dominion University | Course Advising System
-</footer>
-
 <script>
-const BASE_URL = "https://cs418518-f25-clean.onrender.com/advising";
-const email = localStorage.getItem("userEmail");
-if (!email) {
-  alert("You must sign in.");
-  window.location.href = "signin.html";
-}
+  const BASE = "https://cs418518-f25-clean.onrender.com/advising";
 
-// New form button
-document.getElementById("newFormBtn").onclick = () => {
-  window.location.href = "advisingform.html";
-};
+  // Get email from localStorage and show it
+  const email = localStorage.getItem("userEmail");
+  const emailInput = document.getElementById("email");
 
-// Helper to fetch data (supports email OR custom query params)
-async function fetchData(endpoint, query = null) {
-  try {
-    const q = query ? query : `email=${encodeURIComponent(email)}`;
-    const res = await fetch(`${BASE_URL}/${endpoint}?${q}`);
-
-    if (!res.ok) throw new Error(`${endpoint} fetch failed: ${res.status}`);
-    return await res.json();
-  } catch (err) {
-    console.error(`${endpoint} fetch failed:`, err);
-    return [];
+  if (!email) {
+    // If no email in storage, send them back to login/home (adjust if needed)
+    window.location.href = "index.html";
+  } else {
+    emailInput.value = email;
   }
-}
 
+  const formsTableBody = document.querySelector("#formsTable tbody");
+  const noFormsMsg = document.getElementById("noFormsMsg");
+  const planSection = document.getElementById("planSection");
+  const planTermSpan = document.getElementById("planTerm");
+  const planList = document.getElementById("planList");
 
-// Load Current Courses
-async function loadCurrentCourses() {
-  const courses = await fetchData("current-courses");
-  const container = document.getElementById("currentCourses");
-  container.innerHTML = courses.length 
-    ? courses.map(c => `<div class="course-box">${c}</div>`).join("")
-    : "<p>No current courses found.</p>";
-}
+  // Load all advising forms for this user (only for course plan view)
+  async function loadForms() {
+    try {
+      const res = await fetch(
+        `${BASE}/forms?email=${encodeURIComponent(email)}`
+      );
+      if (!res.ok) {
+        throw new Error("Failed to load forms");
+      }
 
-// Load Taken Courses
-async function loadTakenCourses() {
-  const courses = await fetchData("taken-courses");
-  const container = document.getElementById("takenCourses");
-  container.innerHTML = courses.length
-    ? courses.map(c => `<div class="course-box">${c}</div>`).join("")
-    : "<p>No courses taken last term.</p>";
-}
+      const forms = await res.json();
 
-// Load Advising Forms
-async function loadForms() {
-  const forms = await fetchData("forms");
-  const container = document.getElementById("formsList");
-  if (!forms.length) {
-    container.innerHTML = "<p>No advising forms submitted yet.</p>";
-    return;
+      formsTableBody.innerHTML = "";
+
+      if (!Array.isArray(forms) || forms.length === 0) {
+        noFormsMsg.style.display = "block";
+        return;
+      }
+
+      noFormsMsg.style.display = "none";
+
+      forms.forEach(form => {
+        const tr = document.createElement("tr");
+
+        const createdAt = form.created_at
+          ? new Date(form.created_at).toLocaleString()
+          : "";
+
+        tr.innerHTML = `
+          <td>${form.current_term || ""}</td>
+          <td>${form.last_gpa != null ? form.last_gpa : ""}</td>
+          <td>${form.status || ""}</td>
+          <td>${createdAt}</td>
+          <td>
+            <button class="btn btn-view" data-id="${form.id}" data-term="${form.current_term || ""}">
+              View Plan
+            </button>
+          </td>
+        `;
+
+        formsTableBody.appendChild(tr);
+      });
+    } catch (err) {
+      console.error("Error loading forms:", err);
+      noFormsMsg.style.display = "block";
+      noFormsMsg.textContent = "Error loading course plans.";
+    }
   }
-  container.innerHTML = forms.map(f => `
-    <div class="form-row">
-      <div>
-        <div><strong>Term:</strong> ${f.current_term}</div>
-        <div class="form-status"><strong>Status:</strong> ${f.status}</div>
-        <div><small>Submitted: ${new Date(f.created_at).toLocaleString()}</small></div>
-      </div>
-      <a class="view-btn" href="advisingform.html?formId=${f.id}">View / Edit</a>
-    </div>
-  `).join("");
-}
 
-// Initialize all
-loadCurrentCourses();
-loadTakenCourses();
-loadForms();
+  // Load a single form's planned courses
+  async function loadPlan(formId, termLabel) {
+    try {
+      const res = await fetch(`${BASE}/forms/${formId}`);
+      if (!res.ok) {
+        throw new Error("Failed to load course plan");
+      }
+
+      const data = await res.json();
+      // Adjust property names if your API is different
+      const courses = data.courses || data.plan || [];
+
+      planList.innerHTML = "";
+
+      if (!Array.isArray(courses) || courses.length === 0) {
+        const li = document.createElement("li");
+        li.textContent = "No courses were saved in this plan.";
+        planList.appendChild(li);
+      } else {
+        courses.forEach(c => {
+          const li = document.createElement("li");
+          const level = c.level || c.course_level || "";
+          const name = c.course_name || c.name || "";
+          li.textContent = level ? `${level} – ${name}` : name;
+          planList.appendChild(li);
+        });
+      }
+
+      planTermSpan.textContent = termLabel || "";
+      planSection.style.display = "block";
+      planSection.scrollIntoView({ behavior: "smooth" });
+    } catch (err) {
+      console.error("Error loading plan:", err);
+      planSection.style.display = "block";
+      planList.innerHTML = "";
+      const li = document.createElement("li");
+      li.textContent = "Error loading this course plan.";
+      planList.appendChild(li);
+    }
+  }
+
+  // Handle clicks on "View Plan" buttons
+  formsTableBody.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-id]");
+    if (!btn) return;
+
+    const formId = btn.getAttribute("data-id");
+    const term = btn.getAttribute("data-term");
+    loadPlan(formId, term);
+  });
+
+  // Initial load
+  loadForms();
 </script>
-
 </body>
 </html>
