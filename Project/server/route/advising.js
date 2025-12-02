@@ -40,7 +40,7 @@ router.get("/current-courses", async (req, res) => {
 ========================= */
 router.get("/taken-courses", async (req, res) => {
   try {
-    const userId = await getUserIdByEmail(req.query.email);
+    const useruserId = await getUserIdByEmail(req.query.email);
     if (!userId) return res.json([]);
 
     const [rows] = await pool.query(
@@ -123,7 +123,6 @@ router.post("/save", async (req, res) => {
     const userId = await getUserIdByEmail(email);
     if (!userId) return res.status(400).json({ error: "Invalid user" });
 
-    // Get completed courses
     const [completed] = await pool.query(
       `SELECT LOWER(REPLACE(course_name,'–','-')) AS c
        FROM advising_courses
@@ -133,7 +132,6 @@ router.post("/save", async (req, res) => {
 
     const completedSet = completed.map(x => x.c);
 
-    // Block already-completed classes
     for (const c of selectedCourses) {
       const norm = c.replace(/–/g, "-").toLowerCase();
       if (completedSet.includes(norm))
@@ -142,7 +140,6 @@ router.post("/save", async (req, res) => {
 
     let advisingId = formId;
 
-    // Create new form
     if (!formId) {
       const [r] = await pool.query(
         `INSERT INTO advising 
@@ -151,9 +148,7 @@ router.post("/save", async (req, res) => {
         [userId, currentTerm, lastGPA || null, currentTerm, status || 'Pending']
       );
       advisingId = r.insertId;
-    } 
-    // Update existing form
-    else {
+    } else {
       const [[check]] = await pool.query(
         "SELECT status FROM advising WHERE id=?",
         [formId]
@@ -168,13 +163,11 @@ router.post("/save", async (req, res) => {
       );
     }
 
-    // Remove old planned courses
     await pool.query(
       "DELETE FROM advising_courses WHERE advising_id=? AND status='Planned'",
       [advisingId]
     );
 
-    // Insert new courses
     for (const c of selectedCourses) {
       await pool.query(
         `INSERT INTO advising_courses
@@ -224,15 +217,24 @@ router.get("/forms/:id", async (req, res) => {
    ✅ ADMIN — LIST
 ========================= */
 router.get("/admin/forms", async (req, res) => {
-  const [rows] = await pool.query(`
-    SELECT a.id, a.current_term, a.status, u.u_name AS name
-    FROM advising a
-    JOIN user_information u ON a.user_id = u.u_id
-    ORDER BY FIELD(a.status,'Pending','Approved','Rejected'),
-             a.created_at DESC
-  `);
+  try {
+    const [rows] = await pool.query(`
+      SELECT 
+        a.id,
+        a.current_term,
+        a.status,
+        CONCAT(u.u_first_name, ' ', u.u_last_name) AS name
+      FROM advising a
+      JOIN user_information u ON a.user_id = u.u_id
+      ORDER BY FIELD(a.status,'Pending','Approved','Rejected'),
+               a.created_at DESC
+    `);
 
-  res.json(rows);
+    res.json(rows);
+  } catch (err) {
+    console.error("Admin list error:", err);
+    res.status(500).json({ error: "Failed loading admin list" });
+  }
 });
 
 /* =========================
@@ -241,18 +243,28 @@ router.get("/admin/forms", async (req, res) => {
 router.get("/admin/forms/:id", async (req, res) => {
   const { id } = req.params;
 
-  const [[form]] = await pool.query(`
-    SELECT a.*, u.u_name AS name, u.u_email
-    FROM advising a
-    JOIN user_information u ON a.user_id = u.u_id
-    WHERE a.id = ?
-  `, [id]);
+  try {
+    const [[form]] = await pool.query(`
+      SELECT 
+        a.*,
+        CONCAT(u.u_first_name, ' ', u.u_last_name) AS name,
+        u.u_email
+      FROM advising a
+      JOIN user_information u ON a.user_id = u.u_id
+      WHERE a.id = ?
+    `, [id]);
 
-  const [courses] = await pool.query(`
-    SELECT course_name FROM advising_courses WHERE advising_id=?
-  `, [id]);
+    const [courses] = await pool.query(
+      "SELECT course_name FROM advising_courses WHERE advising_id=?",
+      [id]
+    );
 
-  res.json({ ...form, courses });
+    res.json({ ...form, courses });
+
+  } catch (err) {
+    console.error("Admin view error:", err);
+    res.status(500).json({ error: "Failed loading form details" });
+  }
 });
 
 /* =========================
@@ -261,15 +273,22 @@ router.get("/admin/forms/:id", async (req, res) => {
 router.post("/admin/decision", async (req, res) => {
   const { id, status, message } = req.body;
 
-  await pool.query(
-    "UPDATE advising SET status=?, admin_message=? WHERE id=?",
-    [status, message, id]
-  );
+  try {
+    await pool.query(
+      "UPDATE advising SET status=?, admin_message=? WHERE id=?",
+      [status, message, id]
+    );
 
-  res.json({ success: true });
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Admin decision error:", err);
+    res.status(500).json({ error: "Decision failed" });
+  }
 });
 
-// ✅ ADMIN CHECK
+/* =========================
+   ✅ ADMIN CHECK
+========================= */
 router.post("/check-admin", async (req, res) => {
   const { email } = req.body;
 
@@ -279,9 +298,7 @@ router.post("/check-admin", async (req, res) => {
       [email]
     );
 
-    if (rows.length === 0) {
-      return res.json({ isAdmin: false });
-    }
+    if (!rows.length) return res.json({ isAdmin: false });
 
     res.json({ isAdmin: rows[0].is_admin === 1 });
 
@@ -290,7 +307,5 @@ router.post("/check-admin", async (req, res) => {
     res.status(500).json({ isAdmin: false });
   }
 });
-
-
 
 export default router;
