@@ -72,6 +72,7 @@
 const BASE = "https://cs418518-f25-clean.onrender.com";
 const id = new URLSearchParams(window.location.search).get("id");
 
+// Load selected advising form
 async function loadForm() {
   try {
     const res = await fetch(`${BASE}/advising/admin/forms/${id}`);
@@ -84,9 +85,10 @@ async function loadForm() {
     const ul = document.getElementById("courseList");
     ul.innerHTML = "";
 
+    // ✅ Display course names correctly
     data.courses.forEach(c => {
       const li = document.createElement("li");
-      li.textContent = c;
+      li.textContent = c.course_name;
       ul.appendChild(li);
     });
 
@@ -96,6 +98,7 @@ async function loadForm() {
   }
 }
 
+// Submit approval / rejection
 async function submitDecision(status) {
   const message = document.getElementById("message").value;
 
@@ -110,7 +113,7 @@ async function submitDecision(status) {
   const data = await res.json();
 
   if (!data.success) {
-    alert("Update failed.");
+    alert("Update failed: " + (data.error || "Unknown error"));
     return;
   }
 
@@ -122,6 +125,7 @@ function goBack() {
   window.location.href = "admin-view.html";
 }
 
+// Load when page opens
 loadForm();
 </script>
 
