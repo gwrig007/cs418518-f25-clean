@@ -274,17 +274,37 @@ router.post("/admin/decision", async (req, res) => {
   const { id, status, message } = req.body;
 
   try {
+
+    // ✅ Update DB
     await pool.query(
       "UPDATE advising SET status=?, admin_message=? WHERE id=?",
       [status, message, id]
     );
 
+    // ✅ Get student email + term
+    const [[row]] = await pool.query(`
+      SELECT u.u_email, a.current_term
+      FROM advising a
+      JOIN user_information u ON a.user_id = u.u_id
+      WHERE a.id = ?
+    `, [id]);
+
+    // ✅ Send email
+    await sendStatusEmail(
+      row.u_email,
+      status,
+      row.current_term,
+      message
+    );
+
     res.json({ success: true });
+
   } catch (err) {
-    console.error("Admin decision error:", err);
-    res.status(500).json({ error: "Decision failed" });
+    console.error("Decision email error:", err);
+    res.status(500).json({ error: "Email failed" });
   }
 });
+
 
 /* =========================
    ✅ ADMIN CHECK
