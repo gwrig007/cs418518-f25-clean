@@ -7,6 +7,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Course Plans | Advising</title>
   <link rel="stylesheet" href="style.css" />
+
   <style>
     table {
       width: 100%;
@@ -27,11 +28,11 @@
       border-radius: 4px;
       border: none;
       cursor: pointer;
+      margin-right:5px;
     }
-    .btn-view {
-      background:#0066cc;
-      color:#fff;
-    }
+    .btn-view { background:#0066cc; color:#fff; }
+    .btn-edit { background:#f0ad4e; color:#fff; }
+
     .note {
       margin-top: 10px;
       font-size: 0.9rem;
@@ -39,21 +40,21 @@
     }
   </style>
 </head>
+
 <body>
 <div class="container">
   <h1>My Course Plans</h1>
+
 <button onclick="window.location.href='advisingform.html'" style="margin-bottom:15px;">
   ➕ Create New Plan
 </button>
 
-
   <label for="email">Email</label>
   <input type="email" id="email" readonly />
 
-  <!-- ⭐ ONLY COURSE PLANS SECTION ⭐ -->
   <section style="margin-top:20px;">
-    <h2>Submitted Advising Forms / Course Plans</h2>
-    <p class="note">Click "View Plan" to see the planned courses for that advising form.</p>
+    <h2>Submitted Advising Forms</h2>
+    <p class="note">Approved and Rejected plans are read-only.</p>
 
     <table id="formsTable">
       <thead>
@@ -65,35 +66,29 @@
           <th>Action</th>
         </tr>
       </thead>
-      <tbody>
-        <!-- rows added by JS -->
-      </tbody>
+      <tbody></tbody>
     </table>
+
     <p id="noFormsMsg" class="note" style="display:none;">
-      You don’t have any advising forms / course plans yet.
+      You don’t have any advising forms yet.
     </p>
   </section>
 
-  <!-- DETAILS FOR A SELECTED COURSE PLAN -->
+  <!-- DETAILS -->
   <section id="planSection" style="margin-top:30px; display:none;">
     <h2>Planned Courses for <span id="planTerm"></span></h2>
     <ul id="planList"></ul>
   </section>
+
 </div>
 
 <script>
   const BASE = "https://cs418518-f25-clean.onrender.com/advising";
-
-  // Get email from localStorage and show it
   const email = localStorage.getItem("userEmail");
   const emailInput = document.getElementById("email");
 
-  if (!email) {
-    // If no email in storage, send them back to login/home (adjust if needed)
-    window.location.href = "index.html";
-  } else {
-    emailInput.value = email;
-  }
+  if (!email) window.location.href = "index.html";
+  emailInput.value = email;
 
   const formsTableBody = document.querySelector("#formsTable tbody");
   const noFormsMsg = document.getElementById("noFormsMsg");
@@ -101,108 +96,89 @@
   const planTermSpan = document.getElementById("planTerm");
   const planList = document.getElementById("planList");
 
-  // Load all advising forms for this user (only for course plan view)
   async function loadForms() {
-    try {
-      const res = await fetch(
-        `${BASE}/forms?email=${encodeURIComponent(email)}`
-      );
-      if (!res.ok) {
-        throw new Error("Failed to load forms");
-      }
+    const res = await fetch(`${BASE}/forms?email=${encodeURIComponent(email)}`);
+    const forms = await res.json();
 
-      const forms = await res.json();
+    formsTableBody.innerHTML = "";
 
-      formsTableBody.innerHTML = "";
-
-      if (!Array.isArray(forms) || forms.length === 0) {
-        noFormsMsg.style.display = "block";
-        return;
-      }
-
-      noFormsMsg.style.display = "none";
-
-      forms.forEach(form => {
-        const tr = document.createElement("tr");
-
-        const createdAt = form.created_at
-          ? new Date(form.created_at).toLocaleString()
-          : "";
-
-        tr.innerHTML = `
-          <td>${form.current_term || ""}</td>
-          <td>${form.last_gpa != null ? form.last_gpa : ""}</td>
-          <td>${form.status || ""}</td>
-          <td>${createdAt}</td>
-          <td>
-            <button class="btn btn-view" data-id="${form.id}" data-term="${form.current_term || ""}">
-              View Plan
-            </button>
-          </td>
-        `;
-
-        formsTableBody.appendChild(tr);
-      });
-    } catch (err) {
-      console.error("Error loading forms:", err);
+    if (!Array.isArray(forms) || forms.length === 0) {
       noFormsMsg.style.display = "block";
-      noFormsMsg.textContent = "Error loading course plans.";
+      return;
     }
+
+    noFormsMsg.style.display = "none";
+
+    forms.forEach(form => {
+      const tr = document.createElement("tr");
+      const createdAt = form.created_at ? new Date(form.created_at).toLocaleString() : "";
+      const isPending = form.status === "Pending";
+
+      tr.innerHTML = `
+        <td>${form.current_term || ""}</td>
+        <td>${form.last_gpa ?? ""}</td>
+        <td>${form.status}</td>
+        <td>${createdAt}</td>
+        <td>
+          <button class="btn btn-view" data-id="${form.id}" data-term="${form.current_term}">
+            View
+          </button>
+
+          ${isPending ? `
+            <button class="btn btn-edit" data-edit="${form.id}">
+              Edit
+            </button>
+          ` : ""}
+        </td>
+      `;
+
+      formsTableBody.appendChild(tr);
+    });
   }
 
-  // Load a single form's planned courses
-  async function loadPlan(formId, termLabel) {
-    try {
-      const res = await fetch(`${BASE}/forms/${formId}`);
-      if (!res.ok) {
-        throw new Error("Failed to load course plan");
-      }
+  async function loadPlan(id, term) {
+    const res = await fetch(`${BASE}/forms/${id}`);
+    const data = await res.json();
 
-      const data = await res.json();
-      // Adjust property names if your API is different
-      const courses = data.courses || data.plan || [];
+    planList.innerHTML = "";
+    const courses = data.courses || [];
 
-      planList.innerHTML = "";
-
-      if (!Array.isArray(courses) || courses.length === 0) {
+    if (!courses.length) {
+      planList.innerHTML = "<li>No courses found</li>";
+    } else {
+      courses.forEach(c => {
         const li = document.createElement("li");
-        li.textContent = "No courses were saved in this plan.";
+        const level = c.course_level || "";
+        const name = c.course_name || "";
+        li.textContent = level ? `${level} – ${name}` : name;
         planList.appendChild(li);
-      } else {
-        courses.forEach(c => {
-          const li = document.createElement("li");
-          const level = c.level || c.course_level || "";
-          const name = c.course_name || c.name || "";
-          li.textContent = level ? `${level} – ${name}` : name;
-          planList.appendChild(li);
-        });
-      }
-
-      planTermSpan.textContent = termLabel || "";
-      planSection.style.display = "block";
-      planSection.scrollIntoView({ behavior: "smooth" });
-    } catch (err) {
-      console.error("Error loading plan:", err);
-      planSection.style.display = "block";
-      planList.innerHTML = "";
-      const li = document.createElement("li");
-      li.textContent = "Error loading this course plan.";
-      planList.appendChild(li);
+      });
     }
+
+    planTermSpan.textContent = term;
+    planSection.style.display = "block";
+    planSection.scrollIntoView({ behavior: "smooth" });
   }
 
-  // Handle clicks on "View Plan" buttons
-  formsTableBody.addEventListener("click", (e) => {
-    const btn = e.target.closest("button[data-id]");
-    if (!btn) return;
+  formsTableBody.addEventListener("click", e => {
 
-    const formId = btn.getAttribute("data-id");
-    const term = btn.getAttribute("data-term");
-    loadPlan(formId, term);
+    // ✅ EDIT Pending
+    const editBtn = e.target.closest("button[data-edit]");
+    if (editBtn) {
+      const id = editBtn.getAttribute("data-edit");
+      window.location.href = `advisingform.html?formId=${id}`;
+      return;
+    }
+
+    // ✅ VIEW
+    const viewBtn = e.target.closest("button[data-id]");
+    if (!viewBtn) return;
+
+    loadPlan(viewBtn.dataset.id, viewBtn.dataset.term);
   });
 
-  // Initial load
   loadForms();
 </script>
+
 </body>
 </html>
