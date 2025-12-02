@@ -3,125 +3,123 @@
 <head>
   <link rel="icon" type="image/png" href="favicon.png">
   <meta charset="UTF-8" />
-  <title>Review Advising Form</title>
+  <title>Admin Dashboard | Advising Forms</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <style>
     body {
       font-family: "Segoe UI", Arial, sans-serif;
       background: #f4f6fa;
-      padding: 40px;
-    }
-
-    .box {
-      background: white;
-      max-width: 700px;
-      margin: auto;
-      padding: 25px;
-      border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      margin: 0;
+      padding: 30px;
     }
 
     h2 {
       color: #003366;
+      margin-bottom: 15px;
     }
 
-    ul {
-      padding-left: 20px;
-    }
-
-    textarea {
+    table {
       width: 100%;
-      height: 100px;
-      padding: 10px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      margin-top: 10px;
-      resize: vertical;
+      border-collapse: collapse;
+      background: #fff;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.08);
     }
 
-    button {
-      margin-top: 12px;
+    th, td {
+      padding: 14px;
+      border-bottom: 1px solid #ddd;
+      text-align: left;
+    }
+
+    th {
       background: #003366;
-      color: white;
-      border: none;
-      padding: 10px 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      margin-right: 8px;
+      color: #fff;
     }
 
-    button:hover {
-      background: #00509e;
+    tr:hover {
+      background: #f0f8ff;
+      cursor: pointer;
     }
+
+    .status {
+      font-weight: bold;
+    }
+
+    .Pending { color: orange; }
+    .Approved { color: green; }
+    .Rejected { color: red; }
   </style>
 </head>
 
 <body>
-<div class="box">
-  <h2 id="studentName">Student</h2>
-  <p><strong>Term:</strong> <span id="term"></span></p>
-  <p><strong>Status:</strong> <span id="status"></span></p>
 
-  <h3>Courses</h3>
-  <ul id="courseList"></ul>
+<h2>Advising Submissions</h2>
 
-  <h3>Admin Feedback</h3>
-  <textarea id="message" placeholder="Enter feedback for the student..."></textarea>
-
-  <br>
-  <button onclick="submitDecision('Approved')">✅ Approve</button>
-  <button onclick="submitDecision('Rejected')">❌ Reject</button>
-  <button onclick="goBack()">⬅ Back</button>
-</div>
+<table>
+  <thead>
+    <tr>
+      <th>Student</th>
+      <th>Term</th>
+      <th>Status</th>
+      <th>Review</th>
+    </tr>
+  </thead>
+  <tbody id="formsBody"></tbody>
+</table>
 
 <script>
-const BASE = "https://cs418518-f25-clean.onrender.com";
-const id = new URLSearchParams(window.location.search).get("id");
+const API_BASE =
+  window.location.hostname.includes("localhost")
+    ? "http://127.0.0.1:10000"
+    : "https://cs418518-f25-clean.onrender.com";
 
-async function loadForm() {
+async function loadForms() {
   try {
-    const res = await fetch(`${BASE}/advising/admin/forms/${id}`);
-    const data = await res.json();
+    const res = await fetch(`${API_BASE}/advising/admin/forms`);
+    const forms = await res.json();
 
-    document.getElementById("studentName").textContent = data.name;
-    document.getElementById("term").textContent = data.current_term;
-    document.getElementById("status").textContent = data.status;
+    const tbody = document.getElementById("formsBody");
+    tbody.innerHTML = "";
 
-    const ul = document.getElementById("courseList");
-    ul.innerHTML = "";
+    // No forms?
+    if (!forms.length) {
+      const row = document.createElement("tr");
+      row.innerHTML = `<td colspan="4">No submissions yet.</td>`;
+      tbody.appendChild(row);
+      return;
+    }
 
-    data.courses.forEach(c => {
-      const li = document.createElement("li");
-      li.textContent = c.course_name;
-      ul.appendChild(li);
+    // Populate table
+    forms.forEach(f => {
+      const tr = document.createElement("tr");
+
+      tr.innerHTML = `
+        <td>${f.name}</td>
+        <td>${f.current_term}</td>
+        <td class="status ${f.status}">${f.status}</td>
+        <td><button onclick="openForm(event, ${f.id})">Open</button></td>
+      `;
+
+      tbody.appendChild(tr);
     });
 
   } catch (err) {
-    alert("Failed to load advising record");
     console.error(err);
+    alert("Failed to load administration list.");
   }
 }
 
-async function submitDecision(status) {
-  const message = document.getElementById("message").value;
-  if (!message) return alert("Please enter feedback.");
-
-  await fetch(`${BASE}/advising/admin/decision`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id, status, message })
-  });
-
-  alert("Decision saved.");
-  window.location.href = "admin.html";
+function openForm(e, id) {
+  e.stopPropagation();
+  window.location.href = `admin-review.html?id=${id}`;
 }
 
-function goBack() {
-  window.location.href = "admin.html";
-}
-
-// Load the selected form
-loadForm();
+// Load forms when page opens
+loadForms();
 </script>
+
 </body>
 </html>
