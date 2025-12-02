@@ -15,6 +15,16 @@ async function getUserIdByEmail(email) {
 }
 
 /* =========================
+   ✅ ADMIN AUTH MIDDLEWARE
+========================= */
+function adminOnly(req, res, next) {
+  if (req.headers["x-admin"] !== "true") {
+    return res.status(403).json({ error: "Admin access only" });
+  }
+  next();
+}
+
+/* =========================
    ✅ CURRENT COURSES
 ========================= */
 router.get("/current-courses", async (req, res) => {
@@ -23,7 +33,7 @@ router.get("/current-courses", async (req, res) => {
     if (!userId) return res.json([]);
 
     const [rows] = await pool.query(
-      `SELECT course_name FROM advising_courses
+      `SELECT course_name FROM advising_courses 
        WHERE user_id=? AND status='Planned'`,
       [userId]
     );
@@ -80,7 +90,7 @@ router.get("/forms", async (req, res) => {
 });
 
 /* =========================
-   ✅ LOAD A SINGLE FORM (legacy)
+   ✅ LOAD A SINGLE FORM (STUDENT)
 ========================= */
 router.get("/form", async (req, res) => {
   try {
@@ -109,7 +119,7 @@ router.get("/form", async (req, res) => {
       }))
     });
   } catch (err) {
-    console.error("Load legacy form error:", err);
+    console.error("Load form error:", err);
     res.status(500).json({ error: "Failed loading form" });
   }
 });
@@ -123,7 +133,7 @@ router.post("/save", async (req, res) => {
     const userId = await getUserIdByEmail(email);
     if (!userId) return res.status(400).json({ error: "Invalid user" });
 
-    // Get completed courses
+    // Check completed courses
     const [completed] = await pool.query(
       `SELECT LOWER(REPLACE(course_name,'–','-')) AS c
        FROM advising_courses
@@ -133,41 +143,41 @@ router.post("/save", async (req, res) => {
 
     const completedSet = completed.map(x => x.c);
 
-    // Enforce rule: cannot re-add completed courses
     for (const c of selectedCourses) {
       const norm = c.replace(/–/g, "-").toLowerCase();
-      if (completedSet.includes(norm)) {
+      if (completedSet.includes(norm))
         return res.status(400).json({ message: `Already completed: ${c}` });
-      }
     }
 
     let advisingId = formId;
 
+    // New form
     if (!formId) {
-      // Create new form
       const [r] = await pool.query(
-        `INSERT INTO advising (user_id,current_term,last_gpa,last_term,status,created_at)
+        `INSERT INTO advising 
+         (user_id,current_term,last_gpa,last_term,status,created_at)
          VALUES (?,?,?,?,?,NOW())`,
         [userId, currentTerm, lastGPA || null, currentTerm, status || 'Pending']
       );
       advisingId = r.insertId;
-    } else {
-      // Update existing if not locked
+    } 
+    // Update form
+    else {
       const [[check]] = await pool.query(
         "SELECT status FROM advising WHERE id=?",
         [formId]
       );
 
       if (!check || check.status !== "Pending")
-        return res.status(403).json({ message: "Form is locked" });
+        return res.status(403).json({ message: "Form locked" });
 
       await pool.query(
         "UPDATE advising SET current_term=?, last_gpa=?, status=? WHERE id=?",
-        [currentTerm, lastGPA || null, status || 'Pending', formId]
+        [currentTerm, lastGPA || null, status || "Pending", formId]
       );
     }
 
-    // Remove old planned courses
+    // Clear planned courses
     await pool.query(
       "DELETE FROM advising_courses WHERE advising_id=? AND status='Planned'",
       [advisingId]
@@ -176,7 +186,8 @@ router.post("/save", async (req, res) => {
     // Insert new planned courses
     for (const c of selectedCourses) {
       await pool.query(
-        `INSERT INTO advising_courses (advising_id,user_id,course_name,status,term)
+        `INSERT INTO advising_courses
+         (advising_id,user_id,course_name,status,term)
          VALUES (?,?,?,'Planned',?)`,
         [advisingId, userId, c, currentTerm]
       );
@@ -186,41 +197,83 @@ router.post("/save", async (req, res) => {
 
   } catch (err) {
     console.error("Save form error:", err);
-    res.status(500).json({ error: "Failed saving form" });
+    res.status(500).json({ error: "Save failed" });
   }
 });
 
 /* =========================
-   ✅ VIEW COURSE PLAN (MAIN ROUTE)
+   ✅ LOAD COURSE PLAN
 ========================= */
 router.get("/forms/:id", async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Load form
     const [forms] = await pool.query(
-      "SELECT id, current_term, last_gpa, status, created_at FROM advising WHERE id = ?",
+      "SELECT id, current_term, last_gpa, status, created_at FROM advising WHERE id=?",
       [id]
     );
 
-    if (forms.length === 0)
-      return res.status(404).json({ error: "Form not found" });
+    if (!forms.length)
+      return res.status(404).json({ error: "Not found" });
 
-    // Load courses (✅ CORRECT FK NAME)
     const [courses] = await pool.query(
-      "SELECT course_level, course_name FROM advising_courses WHERE advising_id = ?",
+      "SELECT course_level, course_name FROM advising_courses WHERE advising_id=?",
       [id]
     );
 
-    res.json({
-      ...forms[0],
-      courses
-    });
+    res.json({ ...forms[0], courses });
 
   } catch (err) {
     console.error("Load plan error:", err);
-    res.status(500).json({ error: "Server error loading course plan" });
+    res.status(500).json({ error: "Failed loading course plan" });
   }
+});
+
+/* =========================
+   ✅ ADMIN LIST
+========================= */
+router.get("/admin/forms", adminOnly, async (req, res) => {
+  const [rows] = await pool.query(`
+    SELECT a.id, a.current_term, a.status, u.u_name AS name
+    FROM advising a
+    JOIN user_information u ON a.user_id = u.u_id
+    ORDER BY FIELD(a.status,'Pending','Approved','Rejected'), a.created_at DESC
+  `);
+  res.json(rows);
+});
+
+/* =========================
+   ✅ ADMIN VIEW
+========================= */
+router.get("/admin/forms/:id", adminOnly, async (req, res) => {
+  const { id } = req.params;
+
+  const [[form]] = await pool.query(`
+    SELECT a.*, u.u_name AS name, u.u_email
+    FROM advising a
+    JOIN user_information u ON a.user_id = u.u_id
+    WHERE a.id = ?
+  `, [id]);
+
+  const [courses] = await pool.query(`
+    SELECT course_name FROM advising_courses WHERE advising_id=?
+  `, [id]);
+
+  res.json({ ...form, courses });
+});
+
+/* =========================
+   ✅ ADMIN DECISION
+========================= */
+router.post("/admin/decision", adminOnly, async (req, res) => {
+  const { id, status, message } = req.body;
+
+  await pool.query(
+    "UPDATE advising SET status=?, admin_message=? WHERE id=?",
+    [status, message, id]
+  );
+
+  res.json({ success: true });
 });
 
 export default router;

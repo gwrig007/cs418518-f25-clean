@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <meta charset="UTF-8" />
+  <title>Review Advising Form</title>
+  <style>
+    body { font-family:Segoe UI; background:#f4f6fa; padding:30px; }
+    .box { background:white; padding:20px; border-radius:12px; max-width:700px; margin:auto; }
+    h2 { color:#003366; }
+    ul { line-height:1.8; }
+    textarea { width:100%; height:100px; margin-top:10px; border-radius:8px; padding:8px; }
+    button { margin-top:10px; }
+  </style>
+</head>
+<body>
+<div class="box">
+  <h2 id="studentName">Student</h2>
+  <p>Term: <span id="term"></span></p>
+  <p>Status: <span id="status"></span></p>
+
+  <h3>Courses</h3>
+  <ul id="courseList"></ul>
+
+  <h3>Admin Feedback</h3>
+  <textarea id="message" placeholder="Enter feedback..."></textarea>
+
+  <br>
+  <button onclick="submitDecision('Approved')">✅ Approve</button>
+  <button onclick="submitDecision('Rejected')">❌ Reject</button>
+</div>
+
+<script>
+const BASE = "https://cs418518-f25-clean.onrender.com";
+const id = new URLSearchParams(window.location.search).get("id");
+
+async function loadForm() {
+  const res = await fetch(`${BASE}/advising/admin/forms/${id}`);
+  const data = await res.json();
+
+  document.getElementById("studentName").textContent = data.name;
+  document.getElementById("term").textContent = data.current_term;
+  document.getElementById("status").textContent = data.status;
+
+  const ul = document.getElementById("courseList");
+  data.courses.forEach(c => {
+    const li = document.createElement("li");
+    li.textContent = c.course_name;
+    ul.appendChild(li);
+  });
+}
+
+async function submitDecision(status) {
+  const message = document.getElementById("message").value;
+  if (!message) return alert("Enter feedback!");
+
+  await fetch(`${BASE}/advising/admin/decision`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id, status, message })
+  });
+
+  alert("Decision saved!");
+  window.location.href = "admin.html";
+}
+
+loadForm();
+</script>
+</body>
+</html>

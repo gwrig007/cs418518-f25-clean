@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
   <link rel="icon" type="image/png" href="favicon.png">
-
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Admin Dashboard | ODU Course Advising Portal</title>
+
   <style>
     body {
       margin: 0;
@@ -16,7 +16,6 @@
       height: 100vh;
     }
 
-    /* Sidebar */
     .sidebar {
       width: 250px;
       background-color: #003366;
@@ -25,12 +24,14 @@
       display: flex;
       flex-direction: column;
     }
+
     .sidebar h2 {
       margin-top: 0;
       font-size: 1.4rem;
       text-align: center;
       margin-bottom: 30px;
     }
+
     .sidebar a {
       color: white;
       text-decoration: none;
@@ -39,27 +40,31 @@
       border-radius: 8px;
       margin-bottom: 10px;
       transition: 0.3s;
+      cursor: pointer;
     }
+
     .sidebar a:hover {
       background-color: #00509e;
     }
 
-    /* Main content */
     .main {
       flex: 1;
       padding: 30px;
       overflow-y: auto;
     }
+
     header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 30px;
     }
+
     header h1 {
       color: #003366;
       font-size: 1.8rem;
     }
+
     button {
       background-color: #003366;
       color: white;
@@ -69,86 +74,142 @@
       cursor: pointer;
       transition: 0.3s;
     }
+
     button:hover {
       background-color: #00509e;
     }
 
-    /* Cards */
-    .cards {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 20px;
-    }
-    .card {
-      background: white;
-      padding: 20px;
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background:white;
       border-radius: 12px;
+      overflow:hidden;
       box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     }
-    .card h3 {
-      color: #003366;
-      margin-top: 0;
+
+    th, td {
+      padding: 12px;
+      border-bottom: 1px solid #eee;
+      text-align: left;
     }
-    .card p {
-      color: #555;
+
+    th {
+      background: #003366;
+      color: white;
+    }
+
+    tr:hover {
+      background:#f2f6fb;
+      cursor:pointer;
     }
   </style>
 </head>
-<link rel="icon" type="image/png" href="favicon.png">
 
 <body>
-  <div class="sidebar">
-    <h2>Admin Panel</h2>
-    <a href="#">Dashboard</a>
-    <a href="#">Pending Advising Sheets</a>
-    <a href="#">Approved Sheets</a>
-    <a href="#">User Management</a>
-    <a href="#" id="logoutBtn">Logout</a>
-  </div>
+<div class="sidebar">
+  <h2>Admin Panel</h2>
+  <a onclick="loadForms()">Dashboard</a>
+  <a onclick="filterStatus('Pending')">Pending Advising Sheets</a>
+  <a onclick="filterStatus('Approved')">Approved Sheets</a>
+  <a onclick="filterStatus('Rejected')">Rejected Sheets</a>
+  <a onclick="logout()">Logout</a>
+</div>
 
-  <div class="main">
-    <header>
-      <h1>Welcome, Admin</h1>
-      <button id="logoutButton">Logout</button>
-    </header>
+<div class="main">
+  <header>
+    <h1>Advising Forms</h1>
+    <button onclick="logout()">Logout</button>
+  </header>
 
-    <section class="cards">
-      <div class="card">
-        <h3>Pending Advising Sheets</h3>
-        <p>View and approve submitted advising sheets from students.</p>
-        <button>View Pending</button>
-      </div>
+  <p id="count"></p>
 
-      <div class="card">
-        <h3>Approved Advising Sheets</h3>
-        <p>Review previously approved advising sheets.</p>
-        <button>View Approved</button>
-      </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Student Name</th>
+        <th>Term</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody id="adminTable"></tbody>
+  </table>
+</div>
 
-      <div class="card">
-        <h3>User Management</h3>
-        <p>Manage student accounts and details (coming soon).</p>
-        <button>Manage Users</button>
-      </div>
-    </section>
-  </div>
+<script>
+const BASE = "https://cs418518-f25-clean.onrender.com";
+const email = localStorage.getItem("userEmail");
+const isAdmin = localStorage.getItem("isAdmin") === "true";
 
-  <script>
-    // Protect the admin page
-    const userEmail = localStorage.getItem("userEmail");
-    const isAdmin = localStorage.getItem("isAdmin") === "true";
+if (!email || !isAdmin) {
+  alert("Access denied. Admin only.");
+  window.location.href = "signin.html";
+}
 
-    if (!userEmail || !isAdmin) {
-      alert("Access denied. Admins only.");
-      window.location.href = "signin.html";
-    }
+// Logout function
+function logout() {
+  localStorage.clear();
+  window.location.href = "signin.html";
+}
 
-    // Logout functionality
-    document.getElementById("logoutButton").addEventListener("click", () => {
-      localStorage.removeItem("userEmail");
-      localStorage.removeItem("isAdmin");
-      window.location.href = "signin.html";
+let allForms = [];
+
+// Load ALL advising forms
+async function loadForms() {
+  try {
+    const res = await fetch(`${BASE}/advising/admin/forms`, {
+      headers: { "x-admin": "true" }
     });
-  </script>
+
+    if (!res.ok) throw new Error("Unauthorized");
+
+    allForms = await res.json();
+    render(allForms);
+
+  } catch (err) {
+    alert("Failed loading admin data");
+    console.error(err);
+  }
+}
+
+// Filter table
+function filterStatus(status) {
+  const filtered = allForms.filter(f => f.status === status);
+  render(filtered);
+}
+
+// Render table
+function render(data) {
+  const tbody = document.getElementById("adminTable");
+  tbody.innerHTML = "";
+
+  document.getElementById("count").textContent =
+    `Showing ${data.length} record(s)`;
+
+  if (!data.length) {
+    tbody.innerHTML = "<tr><td colspan='3'>No records found</td></tr>";
+    return;
+  }
+
+  data.forEach(f => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${f.name}</td>
+      <td>${f.current_term}</td>
+      <td>${f.status}</td>
+    `;
+
+    tr.onclick = () => {
+      window.location.href = `admin-view.html?id=${f.id}`;
+    };
+
+    tbody.appendChild(tr);
+  });
+}
+
+// Init
+loadForms();
+</script>
+
 </body>
 </html>
