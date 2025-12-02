@@ -137,7 +137,7 @@
   }
 
   async function loadPlan(id, term) {
-    const res = await fetch(`${BASE}/forms/${id}`);
+    const res = await fetch(`${BASE}/form?formId=${formId}`);
     const data = await res.json();
 
     planList.innerHTML = "";
