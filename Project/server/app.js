@@ -33,6 +33,15 @@ app.use(cors({
 // STATIC FILES
 app.use(express.static("client"));
 
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+app.use(express.static(path.join(__dirname, "../client")));
+
+
 // LOGGING
 app.use((req, res, next) => {
   console.log(`📌 ${req.method} ${req.url}`);
