@@ -25,3 +25,30 @@ export async function sendEmail(email, mailSubject, body) {
     return false;
   }
 }
+
+
+/* =====================================================
+   ✅ ADD THIS (DO NOT REMOVE EXISTING FUNCTION)
+   This matches what advising.js imports
+===================================================== */
+export async function sendStatusEmail(to, status, term, message) {
+
+  const subject = `Advising Plan ${status}`;
+
+  const html = `
+    <h2>ODU Advising Notification</h2>
+    <p>Your advising plan has been reviewed.</p>
+
+    <p><strong>Term:</strong> ${term}</p>
+    <p><strong>Status:</strong> ${status}</p>
+
+    <p><strong>Advisor Message:</strong></p>
+    <p>${message || "No feedback provided."}</p>
+
+    <br>
+    <p>ODU Advising Portal</p>
+  `;
+
+  // reuse your existing SendGrid sender
+  return await sendEmail(to, subject, html);
+}

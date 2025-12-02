@@ -1,6 +1,6 @@
 import express from "express";
 import { pool } from "../database/connection.js";
-import { sendStatusEmail } from "../utils/mailer.js";
+import { sendStatusEmail } from "../utils/sendmail.js";
 
 const router = express.Router();
 
@@ -24,7 +24,8 @@ router.get("/current-courses", async (req, res) => {
     if (!userId) return res.json([]);
 
     const [rows] = await pool.query(
-      `SELECT course_name FROM advising_courses
+      `SELECT course_name
+       FROM advising_courses
        WHERE user_id=? AND status='Planned'`,
       [userId]
     );
@@ -37,15 +38,16 @@ router.get("/current-courses", async (req, res) => {
 });
 
 /* =========================
-   ✅ TAKEN COURSES
+   ✅ TAKEN COURSES 
 ========================= */
 router.get("/taken-courses", async (req, res) => {
   try {
-    const useruserId = await getUserIdByEmail(req.query.email);
+    const userId = await getUserIdByEmail(req.query.email);
     if (!userId) return res.json([]);
 
     const [rows] = await pool.query(
-      `SELECT course_name FROM advising_courses
+      `SELECT course_name
+       FROM advising_courses
        WHERE user_id=? AND status='Completed'`,
       [userId]
     );
@@ -135,8 +137,9 @@ router.post("/save", async (req, res) => {
 
     for (const c of selectedCourses) {
       const norm = c.replace(/–/g, "-").toLowerCase();
-      if (completedSet.includes(norm))
+      if (completedSet.includes(norm)) {
         return res.status(400).json({ message: `Already completed: ${c}` });
+      }
     }
 
     let advisingId = formId;
@@ -155,8 +158,9 @@ router.post("/save", async (req, res) => {
         [formId]
       );
 
-      if (!check || check.status !== "Pending")
+      if (!check || check.status !== "Pending") {
         return res.status(403).json({ message: "Form locked" });
+      }
 
       await pool.query(
         "UPDATE advising SET current_term=?, last_gpa=?, status=? WHERE id=?",
@@ -183,34 +187,6 @@ router.post("/save", async (req, res) => {
   } catch (err) {
     console.error("Save form error:", err);
     res.status(500).json({ error: "Save failed" });
-  }
-});
-
-/* =========================
-   ✅ LOAD COURSE PLAN
-========================= */
-router.get("/forms/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const [forms] = await pool.query(
-      "SELECT id, current_term, last_gpa, status, created_at FROM advising WHERE id=?",
-      [id]
-    );
-
-    if (!forms.length)
-      return res.status(404).json({ error: "Not found" });
-
-    const [courses] = await pool.query(
-      "SELECT course_level, course_name FROM advising_courses WHERE advising_id=?",
-      [id]
-    );
-
-    res.json({ ...forms[0], courses });
-
-  } catch (err) {
-    console.error("Load plan error:", err);
-    res.status(500).json({ error: "Failed loading plan" });
   }
 });
 
@@ -255,6 +231,8 @@ router.get("/admin/forms/:id", async (req, res) => {
       WHERE a.id = ?
     `, [id]);
 
+    if (!form) return res.status(404).json({ error: "Not found" });
+
     const [courses] = await pool.query(
       "SELECT course_name FROM advising_courses WHERE advising_id=?",
       [id]
@@ -269,20 +247,17 @@ router.get("/admin/forms/:id", async (req, res) => {
 });
 
 /* =========================
-   ✅ ADMIN — DECISION
+   ✅ ADMIN — DECISION (FIXED)
 ========================= */
 router.post("/admin/decision", async (req, res) => {
   const { id, status, message } = req.body;
 
   try {
-
-    // ✅ Update DB
     await pool.query(
       "UPDATE advising SET status=?, admin_message=? WHERE id=?",
       [status, message, id]
     );
 
-    // ✅ Get student email + term
     const [[row]] = await pool.query(`
       SELECT u.u_email, a.current_term
       FROM advising a
@@ -290,7 +265,11 @@ router.post("/admin/decision", async (req, res) => {
       WHERE a.id = ?
     `, [id]);
 
-    // ✅ Send email
+    // ✅ CRITICAL FIX (this stops Jest crashing)
+    if (!row) {
+      return res.status(404).json({ error: "Advising record not found" });
+    }
+
     await sendStatusEmail(
       row.u_email,
       status,
@@ -301,11 +280,10 @@ router.post("/admin/decision", async (req, res) => {
     res.json({ success: true });
 
   } catch (err) {
-    console.error("Decision email error:", err);
-    res.status(500).json({ error: "Email failed" });
+    console.error("Decision error:", err);
+    res.status(500).json({ error: "Decision failed" });
   }
 });
-
 
 /* =========================
    ✅ ADMIN CHECK
