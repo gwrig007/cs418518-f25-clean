@@ -2,29 +2,35 @@
 <html lang="en">
 <head>
   <link rel="icon" type="image/png" href="favicon.png">
-
-
   <meta charset="UTF-8" />
-  <title>Verify OTP</title>
+  <title>Verify OTP | ODU Course Advising Portal</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
 </head>
 
 <body>
-  <div class="container">
-    <h1>Verify Code</h1>
-    <p>Enter the code sent to your email</p>
 
-    <form id="otpForm">
-      <input type="text" id="otp" placeholder="6 digit code" required />
-      <button type="submit">Verify</button>
-    </form>
+<div class="container">
+  <h1>Verify Code</h1>
+  <p>Enter the code sent to your email</p>
 
-    <div id="msg"></div>
-  </div>
+  <form id="otpForm">
+    <input
+      type="text"
+      id="otp"
+      placeholder="6 digit code"
+      maxlength="6"
+      required
+    />
+    <button type="submit">Verify</button>
+  </form>
 
-  <script>
+  <div id="msg"></div>
+</div>
+
+<script>
 document.addEventListener("DOMContentLoaded", () => {
+
   const BASE_URL =
     window.location.hostname.includes("localhost")
       ? "http://127.0.0.1:10000"
@@ -46,6 +52,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!otp) return (msg.textContent = "Enter the OTP code.");
 
     try {
+      // ✅ VERIFY OTP
       const res = await fetch(`${BASE_URL}/user/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -59,25 +66,44 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      // ✅ LOGIN FINALIZED HERE
+      // ✅ LOGIN COMPLETE
       localStorage.setItem("userEmail", pendingEmail);
       localStorage.removeItem("pendingEmail");
 
       msg.style.color = "green";
-      msg.textContent = "Success! Redirecting...";
+      msg.textContent = "Success! Checking account type...";
 
-      setTimeout(() => {
-        window.location.href = "home.html";
-      }, 700);
+      // ✅ CHECK ADMIN STATUS
+      fetch(`${BASE_URL}/advising/check-admin`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: localStorage.getItem("userEmail") })
+      })
+      .then(res => res.json())
+      .then(info => {
+
+        // ✅ ADMIN
+        if (info.isAdmin === true) {
+          window.location.href = "admin-view.html";
+        }
+        // ✅ STUDENT
+        else {
+          window.location.href = "classes.html";
+        }
+
+      })
+      .catch(err => {
+        console.error("Admin check failed:", err);
+        window.location.href = "classes.html"; // fallback
+      });
 
     } catch (err) {
       console.error(err);
-      msg.textContent = "Server error";
+      msg.textContent = "Server error.";
     }
   });
 });
 </script>
-
 
 </body>
 </html>

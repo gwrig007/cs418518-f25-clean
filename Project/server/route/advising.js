@@ -269,4 +269,28 @@ router.post("/admin/decision", async (req, res) => {
   res.json({ success: true });
 });
 
+// ✅ ADMIN CHECK
+router.post("/check-admin", async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const [rows] = await pool.query(
+      "SELECT is_admin FROM user_information WHERE u_email = ?",
+      [email]
+    );
+
+    if (rows.length === 0) {
+      return res.json({ isAdmin: false });
+    }
+
+    res.json({ isAdmin: rows[0].is_admin === 1 });
+
+  } catch (err) {
+    console.error("Admin check error:", err);
+    res.status(500).json({ isAdmin: false });
+  }
+});
+
+
+
 export default router;
