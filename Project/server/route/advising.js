@@ -1,5 +1,6 @@
 import express from "express";
 import { pool } from "../database/connection.js";
+import { sendStatusEmail } from "../utils/mailer.js";
 
 const router = express.Router();
 
