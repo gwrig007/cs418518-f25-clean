@@ -308,7 +308,7 @@ router.post("/check-admin", async (req, res) => {
 });
 
 /* =========================
-   ✅ ADMIN — LIST (FIX FOR 404)
+   ✅ ADMIN — LIST
 ========================= */
 router.get("/admin/forms", async (req, res) => {
   try {
@@ -331,6 +331,33 @@ router.get("/admin/forms", async (req, res) => {
     res.status(500).json({ error: "Failed loading admin list" });
   }
 });
+
+/* =========================
+   ✅ ADMIN — LIST ALL FORMS
+========================= */
+router.get("/admin/forms", async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT 
+        a.id,
+        a.current_term,
+        a.status,
+        a.created_at,
+        CONCAT(u.u_first_name, ' ', u.u_last_name) AS name
+      FROM advising a
+      JOIN user_information u ON a.user_id = u.u_id
+      ORDER BY FIELD(a.status,'Pending','Approved','Rejected'),
+               a.created_at DESC
+    `);
+
+    res.json(rows);
+
+  } catch (err) {
+    console.error("Admin list error:", err);
+    res.status(500).json({ error: "Failed loading admin forms" });
+  }
+});
+
 
 
 export default router;
